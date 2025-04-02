@@ -61,35 +61,35 @@ export default function AdminDashboard() {
       name: 'Pending Leads', 
       count: stats.pending, 
       color: 'bg-yellow-100 text-yellow-800',
-      path: '/admin/sales',
+      path: '/admin/leads',
       query: '?status=pending'
     },
     { 
       name: 'Contacted', 
       count: stats.contacted, 
       color: 'bg-blue-100 text-blue-800',
-      path: '/admin/sales',
+      path: '/admin/leads',
       query: '?status=contacted'
     },
     { 
       name: 'Sent Invoice', 
       count: stats.sentInvoice, 
       color: 'bg-purple-100 text-purple-800',
-      path: '/admin/sales',
+      path: '/admin/leads',
       query: '?status=sent+invoice'
     },
     { 
       name: 'Completed', 
       count: stats.completed, 
       color: 'bg-green-100 text-green-800',
-      path: '/admin/sales',
+      path: '/admin/leads',
       query: '?status=completed'
     },
     { 
       name: 'Not Available', 
       count: stats.notAvailable, 
       color: 'bg-gray-100 text-gray-800',
-      path: '/admin/sales',
+      path: '/admin/leads',
       query: '?status=not+available'
     }
   ];
@@ -143,17 +143,14 @@ export default function AdminDashboard() {
           </div>
           <div className="px-4 py-5 sm:p-6">
             <div className="space-y-3">
-              <Link href="/admin/sales" className="text-blue-600 hover:text-blue-800 block">
-                View All Sales
+              <Link href="/admin/leads" className="text-blue-600 hover:text-blue-800 block">
+                View All Leads
               </Link>
               <Link href="/admin/reports" className="text-blue-600 hover:text-blue-800 block">
                 View Reports
               </Link>
               <Link href="/admin/setup" className="text-blue-600 hover:text-blue-800 block">
                 Setup Guide
-              </Link>
-              <Link href="/admin/seed" className="text-blue-600 hover:text-blue-800 block">
-                Seed Dummy Data
               </Link>
             </div>
           </div>

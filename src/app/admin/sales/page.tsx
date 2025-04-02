@@ -55,7 +55,7 @@ interface StatusWorkflow {
   [key: string]: StatusWorkflowItem;
 }
 
-export default function SalesAdminPage() {
+export default function LeadsAdminPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -344,8 +344,9 @@ export default function SalesAdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold pb-6">Sales Management</h1>
         <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Lead Management</h1>
+          
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-500">Data Source:</span>
             <span className={`

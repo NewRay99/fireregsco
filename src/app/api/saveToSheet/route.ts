@@ -62,28 +62,6 @@ export async function POST(request: NextRequest) {
       throw new Error('No form data provided');
     }
     
-    // Check if we should use Supabase instead
-    if (process.env.USE_SUPABASE_STORAGE === 'true') {
-      console.log('Using Supabase for data storage instead of Google Sheets');
-      
-      // Forward the request to the Supabase API route
-      const supabaseResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/supabase`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ formData })
-      });
-      
-      if (!supabaseResponse.ok) {
-        const errorData = await supabaseResponse.json();
-        throw new Error(`Failed to save to Supabase: ${errorData.message || supabaseResponse.statusText}`);
-      }
-      
-      const supabaseData = await supabaseResponse.json();
-      return NextResponse.json(supabaseData);
-    }
-    
     // Format the data for Google Sheets
     const timestamp = new Date().toISOString();
     const formattedData = {
@@ -270,238 +248,282 @@ export async function POST(request: NextRequest) {
         ];
         existingContact.status = formattedData.status;
         existingContact.timestamp = formattedData.timestamp;
-        
-        invalidateLeadCaches(formattedData.email, existingContact.id);
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Data updated in memory (API fallback)',
-          data: existingContact
-        });
       } else {
-        // Add as new contact
-        const newContact = {
+        // Add new contact
+        global.contactData.push({
           id: contactId,
           ...formattedData,
           trackingHistory
-        };
-        
-        global.contactData.push(newContact);
-        
-        invalidateLeadCaches(formattedData.email, contactId);
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Data saved to memory (API fallback)',
-          data: newContact
         });
       }
+      
+      console.log('API failed, saved to mock database. Current contacts:', global.contactData.length);
+      
+      invalidateLeadCaches(formattedData.email, contactId);
+      
+      // Return success response with fallback notice
+      return NextResponse.json({
+        success: true,
+        message: 'Data saved to local storage (Google Sheets API unavailable)',
+        data: {
+          id: contactId,
+          ...formattedData,
+          trackingHistory
+        },
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError)
+      });
     }
     
   } catch (error) {
-    console.error('Error in saveToSheet POST handler:', error);
+    console.error('Error saving to Google Sheets:', error);
+    
+    invalidateLeadCaches();
+    
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : 'An unknown error occurred' },
+      {
+        success: false,
+        message: 'Failed to save to Google Sheets',
+        error: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
 }
 
-// Update lead status
+// API endpoint to update lead status
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { leadId, status, notes, timestamp = new Date().toISOString() } = body;
+    const { leadId, status, notes } = body;
     
-    if (!leadId) {
-      throw new Error('Lead ID is required');
+    console.log('Received status update request:', { leadId, status, notes });
+    
+    if (!leadId || !status) {
+      throw new Error('Lead ID and status are required');
     }
     
-    if (!status) {
-      throw new Error('Status is required');
+    // Validate status
+    const validStatuses = ['pending', 'not available', 'contacted', 'sent invoice', 'completed'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
     
-    // Check if we should use Supabase instead
-    if (process.env.USE_SUPABASE_STORAGE === 'true') {
-      console.log('Using Supabase for data storage instead of Google Sheets');
-      
-      // Forward the request to the Supabase API route
-      const supabaseResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/supabase`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-      
-      if (!supabaseResponse.ok) {
-        const errorData = await supabaseResponse.json();
-        throw new Error(`Failed to update status in Supabase: ${errorData.message || supabaseResponse.statusText}`);
-      }
-      
-      const supabaseData = await supabaseResponse.json();
-      return NextResponse.json(supabaseData);
-    }
-    
-    // Google Sheets Web App URL - replace with your deployed Google Apps Script web app URL
+    // Google Sheets Web App URL
     const sheetsWebAppUrl = process.env.GOOGLE_SHEETS_URL || '';
+    const timestamp = new Date().toISOString();
     
     if (!sheetsWebAppUrl) {
-      // For development, use the in-memory database
-      console.log('Would update lead status in Google Sheets:', { leadId, status, notes });
+      console.log('Would update lead status:', { leadId, status, notes });
       
-      if (!global.contactData) {
-        global.contactData = [];
-      }
-      
-      // Find the contact by lead ID (checking in tracking history)
-      let updatedContact = null;
-      
-      for (const contact of global.contactData) {
-        // Check if this contact has the lead we're looking for
-        const hasLead = contact.trackingHistory?.some((history: any) => history.leadId === leadId);
+      // In development mode, update the mock database
+      if (global.contactData) {
+        // Find contact by ID or by checking the IDs in tracking history
+        let contact = global.contactData.find(c => c.id === leadId);
         
-        if (hasLead) {
+        if (!contact) {
+          // Try to find by tracking history
+          contact = global.contactData.find(c => 
+            c.trackingHistory?.some((h: TrackingHistory) => h.leadId === leadId || h.contactId === leadId)
+          );
+        }
+        
+        if (contact) {
           // Update the contact status
           contact.status = status;
           
-          // Add a new tracking history entry
-          contact.trackingHistory = [
-            {
-              leadId,
-              contactId: contact.id,
-              name: contact.name,
-              email: contact.email,
-              phone: contact.phone,
-              status,
-              notes: notes || `Status updated to ${status}`,
-              timestamp
-            },
-            ...(contact.trackingHistory || [])
-          ];
+          // Add a new entry to tracking history
+          const newHistoryEntry = {
+            leadId: 'lead-' + Math.random().toString(36).substring(2, 15),
+            contactId: contact.id,
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+            status,
+            notes: notes || 'Status updated (mock mode)',
+            timestamp
+          };
           
-          updatedContact = contact;
-          break;
+          if (!contact.trackingHistory) {
+            contact.trackingHistory = [];
+          }
+          
+          // Add to beginning (for descending order)
+          contact.trackingHistory.unshift(newHistoryEntry);
+          
+          console.log('Updated mock lead status:', contact.id, status);
+          
+          // Invalidate caches for this contact
+          invalidateLeadCaches(contact.email, contact.id);
+        } else {
+          console.warn('Lead not found in mock database:', leadId);
         }
       }
       
-      if (!updatedContact) {
-        throw new Error(`Lead ID ${leadId} not found`);
-      }
-      
-      invalidateLeadCaches(updatedContact.email, updatedContact.id);
-      
       return NextResponse.json({
         success: true,
-        message: 'Lead status updated in memory',
-        data: updatedContact
+        message: 'Status update logged (Google Sheets URL not configured)',
+        data: { leadId, status, notes, timestamp }
       });
     }
     
-    console.log('Updating lead status in Google Sheets:', { leadId, status, notes });
+    console.log('Sending status update to Google Sheets:', { leadId, status, notes, timestamp });
     
-    // Update the status in Google Sheets
     try {
+      // Send the update to Google Sheets
       const response = await fetch(sheetsWebAppUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          data: {
-            leadId,
-            status,
-            notes,
-            timestamp
-          },
-          action: 'updateLeadStatus' // Indicate this is a status update
+          leadId,
+          status,
+          notes: notes || '',
+          timestamp,
+          action: 'updateLeadStatus'
         })
       });
       
-      // Log the response status
-      console.log('Google Sheets API update response status:', response.status);
+      console.log('Status update response status:', response.status);
       
-      // Get the full response text for detailed logging
+      // Get the full response for detailed logging
       const responseText = await response.text();
-      console.log('Google Sheets update response:', responseText.substring(0, 200) + '...');
+      console.log('Status update response:', responseText.substring(0, 200) + '...');
       
       // Try to parse the response as JSON
       let result;
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('Error parsing update response as JSON:', parseError);
-        throw new Error('Failed to parse Google Sheets update response as JSON');
+        console.error('Error parsing response as JSON:', parseError);
+        throw new Error('Failed to parse response as JSON');
       }
       
       if (!response.ok || !result.success) {
-        throw new Error(`Failed to update status in Google Sheets: ${JSON.stringify(result)}`);
+        throw new Error(`Failed to update lead status: ${JSON.stringify(result)}`);
       }
       
-      console.log('Successfully updated status in Google Sheets:', result);
+      console.log('Successfully updated lead status:', result);
       
-      // Try to update the in-memory cache if available
+      // Update local cache for backup
       if (global.contactData) {
-        // Find the contact by lead ID or by the contact ID in the result
-        const contactId = result.result?.contactId;
-        let updatedContact = null;
+        // Find the contact by lead ID or tracking history
+        let contact = global.contactData.find(c => c.id === leadId);
         
-        for (const contact of global.contactData) {
-          // Check if this contact has the lead we're looking for
-          // or if it matches the contact ID returned from the API
-          const hasLead = contact.trackingHistory?.some((history: any) => history.leadId === leadId);
-          const isContact = contact.id === contactId;
+        if (!contact) {
+          // Try to find by tracking history
+          contact = global.contactData.find(c => 
+            c.trackingHistory?.some((h: TrackingHistory) => h.leadId === leadId || h.contactId === leadId)
+          );
+        }
+        
+        if (contact) {
+          // Update contact status
+          contact.status = status;
           
-          if (hasLead || isContact) {
-            // Update the contact status
-            contact.status = status;
-            
-            // Add a new tracking history entry
-            contact.trackingHistory = [
-              {
-                leadId,
-                contactId: contact.id,
-                name: contact.name,
-                email: contact.email,
-                phone: contact.phone,
-                status,
-                notes: notes || `Status updated to ${status}`,
-                timestamp
-              },
-              ...(contact.trackingHistory || [])
-            ];
-            
-            updatedContact = contact;
-            break;
+          // Add new tracking history entry
+          const newHistoryEntry = {
+            leadId: result.result?.newLeadId || ('lead-' + Math.random().toString(36).substring(2, 15)),
+            contactId: result.result?.contactId || contact.id,
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+            status,
+            notes: notes || 'Status updated',
+            timestamp
+          };
+          
+          if (!contact.trackingHistory) {
+            contact.trackingHistory = [];
           }
+          
+          // Add to beginning (for descending order)
+          contact.trackingHistory.unshift(newHistoryEntry);
+          
+          console.log('Updated local cache with new status:', status);
+          
+          // Invalidate caches for this contact
+          invalidateLeadCaches(contact.email, contact.id);
         }
-        
-        if (updatedContact) {
-          invalidateLeadCaches(updatedContact.email, updatedContact.id);
-        } else {
-          // If we didn't find the contact in memory, invalidate the general cache
-          invalidateLeadCaches();
-        }
-      } else {
-        // If we don't have any in-memory cache, invalidate the general cache
-        invalidateLeadCaches();
       }
+      
+      invalidateLeadCaches();
       
       return NextResponse.json({
         success: true,
-        message: 'Lead status updated in Google Sheets',
+        message: 'Lead status updated successfully',
         sheetResult: result
       });
       
     } catch (fetchError) {
       console.error('Error communicating with Google Sheets API for status update:', fetchError);
-      throw fetchError;
+      
+      // Update mock database as fallback
+      if (global.contactData) {
+        // Find contact by checking ID and tracking history
+        let contact = global.contactData.find(c => c.id === leadId);
+        
+        if (!contact) {
+          // Try to find by tracking history
+          contact = global.contactData.find(c => 
+            c.trackingHistory?.some((h: TrackingHistory) => h.leadId === leadId || h.contactId === leadId)
+          );
+        }
+        
+        if (contact) {
+          // Update contact status
+          contact.status = status;
+          
+          // Add new tracking history entry
+          const newHistoryEntry = {
+            leadId: 'lead-' + Math.random().toString(36).substring(2, 15),
+            contactId: contact.id,
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+            status,
+            notes: notes || 'Status updated (API fallback)',
+            timestamp
+          };
+          
+          if (!contact.trackingHistory) {
+            contact.trackingHistory = [];
+          }
+          
+          // Add to beginning (for descending order)
+          contact.trackingHistory.unshift(newHistoryEntry);
+          
+          console.log('API failed, updated mock lead status:', contact.id, status);
+          
+          // Invalidate caches for this contact
+          invalidateLeadCaches(contact.email, contact.id);
+        } else {
+          console.warn('Lead not found in mock database:', leadId);
+        }
+      }
+      
+      invalidateLeadCaches();
+      
+      // Return success response with fallback notice
+      return NextResponse.json({
+        success: true,
+        message: 'Status updated in local storage (Google Sheets API unavailable)',
+        data: { leadId, status, notes, timestamp },
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError)
+      });
     }
     
   } catch (error) {
-    console.error('Error in saveToSheet PUT handler:', error);
+    console.error('Error updating lead status:', error);
+    
+    invalidateLeadCaches();
+    
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : 'An unknown error occurred' },
+      {
+        success: false,
+        message: 'Failed to update lead status',
+        error: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

@@ -13,7 +13,7 @@ export const getServiceSupabase = () => {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Supabase credentials not configured. Please check your environment variables.');
+    throw new Error('Supabase credentials not configured');
   }
   
   return createClient(supabaseUrl, supabaseServiceKey);

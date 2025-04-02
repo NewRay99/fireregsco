@@ -31,29 +31,11 @@ interface Lead {
 // Define status types for consistency
 const STATUSES = {
   PENDING: 'pending',
+  NOT_AVAILABLE: 'not available',
   CONTACTED: 'contacted',
-  INTERESTED: 'interested',
-  RESERVED_BOOKING: 'reserved booking',
   SENT_INVOICE: 'sent invoice',
-  PAYMENT_RECEIVED: 'payment received',
-  BOOKED: 'booked',
-  COMPLETED_INSPECTION: 'completed inspection',
-  COMPLETED: 'completed',
-  REFUNDED: 'refunded',
-  AFTERSALES: 'aftersales',
-  VOID: 'void',
-  NOT_AVAILABLE: 'not available'
+  COMPLETED: 'completed'
 };
-
-// Status workflow information
-interface StatusWorkflowItem {
-  order: number;
-  description: string;
-}
-
-interface StatusWorkflow {
-  [key: string]: StatusWorkflowItem;
-}
 
 export default function LeadsAdminPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -69,35 +51,9 @@ export default function LeadsAdminPage() {
   const [dataSource, setDataSource] = useState<string>('');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<string>(STATUSES.PENDING);
-  const [statusWorkflow, setStatusWorkflow] = useState<StatusWorkflow | null>(null);
   const router = useRouter();
   const searchType = 'email';
   const searchValue = selectedLead?.email || '';
-
-  // Fetch the status workflow information
-  useEffect(() => {
-    const fetchStatusWorkflow = async () => {
-      try {
-        const response = await fetch(`/api/leads/status-workflow`);
-        
-        if (!response.ok) {
-          console.error('Failed to fetch status workflow');
-          return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.success && data.statusWorkflow) {
-          setStatusWorkflow(data.statusWorkflow);
-          console.log('Fetched status workflow:', data.statusWorkflow);
-        }
-      } catch (err) {
-        console.error('Error fetching status workflow:', err);
-      }
-    };
-    
-    fetchStatusWorkflow();
-  }, []);
 
   // Fetch leads from the API
   useEffect(() => {
@@ -623,33 +579,11 @@ export default function LeadsAdminPage() {
                           value={statusUpdate.status}
                           onChange={handleStatusChange}
                         >
-                          {statusWorkflow ? (
-                            // If we have the workflow with order, use it to render statuses in order
-                            Object.entries(statusWorkflow)
-                              .sort((a, b) => a[1].order - b[1].order)
-                              .map(([status, info]) => (
-                                <option key={status} value={status}>{
-                                  status.charAt(0).toUpperCase() + status.slice(1)
-                                }</option>
-                              ))
-                          ) : (
-                            // Otherwise use our predefined statuses
-                            <>
-                              <option value={STATUSES.PENDING}>Pending</option>
-                              <option value={STATUSES.CONTACTED}>Contacted</option>
-                              <option value={STATUSES.INTERESTED}>Interested</option>
-                              <option value={STATUSES.RESERVED_BOOKING}>Reserved Booking</option>
-                              <option value={STATUSES.SENT_INVOICE}>Sent Invoice</option>
-                              <option value={STATUSES.PAYMENT_RECEIVED}>Payment Received</option>
-                              <option value={STATUSES.BOOKED}>Booked</option>
-                              <option value={STATUSES.COMPLETED_INSPECTION}>Completed Inspection</option>
-                              <option value={STATUSES.COMPLETED}>Completed</option>
-                              <option value={STATUSES.REFUNDED}>Refunded</option>
-                              <option value={STATUSES.AFTERSALES}>Aftersales</option>
-                              <option value={STATUSES.VOID}>Void</option>
-                              <option value={STATUSES.NOT_AVAILABLE}>Not Available</option>
-                            </>
-                          )}
+                          <option value={STATUSES.PENDING}>Pending</option>
+                          <option value={STATUSES.NOT_AVAILABLE}>Not Available</option>
+                          <option value={STATUSES.CONTACTED}>Contacted</option>
+                          <option value={STATUSES.SENT_INVOICE}>Sent Invoice</option>
+                          <option value={STATUSES.COMPLETED}>Completed</option>
                         </select>
                       </div>
                       
@@ -661,19 +595,19 @@ export default function LeadsAdminPage() {
                           id="notes"
                           name="notes"
                           rows={3}
-                          className="mt-1 block w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
-                          placeholder="Add notes about this status change"
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          placeholder="Add notes about this status update..."
                           value={statusUpdate.notes}
                           onChange={handleNotesChange}
-                        ></textarea>
+                        />
                       </div>
                       
                       <div className="flex items-center justify-between">
                         <button
                           type="button"
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                           onClick={updateLeadStatus}
                           disabled={updating}
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                           {updating ? 'Updating...' : 'Update Status'}
                         </button>
