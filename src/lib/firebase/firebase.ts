@@ -1,21 +1,41 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+/**
+ * DEPRECATED - Local storage authentication is now used instead of Firebase
+ * This file remains for backward compatibility only and will be removed in future versions
+ */
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+// Mock Firebase services for backward compatibility
+export const auth = {
+  onAuthStateChanged: (callback: (user: any) => void) => {
+    // Return a no-op unsubscribe function
+    return () => {};
+  },
+  currentUser: null
 };
 
-// Initialize Firebase
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+export const db = {
+  collection: () => ({
+    doc: () => ({
+      get: async () => ({
+        exists: false,
+        data: () => null
+      }),
+      set: async () => {},
+      update: async () => {}
+    }),
+    add: async () => ({
+      id: 'mock-id'
+    }),
+    where: () => ({
+      get: async () => ({
+        docs: []
+      })
+    })
+  })
+};
 
-export { app, auth, db, storage };
+export const storage = {
+  ref: () => ({
+    put: async () => {},
+    getDownloadURL: async () => 'https://example.com/mock-url'
+  })
+};

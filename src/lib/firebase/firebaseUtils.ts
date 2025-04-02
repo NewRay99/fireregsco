@@ -1,54 +1,62 @@
-import { auth, db, storage } from "./firebase";
-import {
-  signOut,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "firebase/auth";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+/**
+ * DEPRECATED - This file contains mock implementations of Firebase utility functions
+ * These are maintained for backward compatibility with existing code
+ * Future versions should use direct API calls instead
+ */
 
-// Auth functions
-export const logoutUser = () => signOut(auth);
-
-export const signInWithGoogle = async () => {
-  const provider = new GoogleAuthProvider();
-  try {
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
-  } catch (error) {
-    console.error("Error signing in with Google", error);
-    throw error;
-  }
+// Authentication utilities
+export const getCurrentUser = () => {
+  return null; // No current user in local storage auth
 };
 
-// Firestore functions
-export const addDocument = (collectionName: string, data: any) =>
-  addDoc(collection(db, collectionName), data);
+export const createUserWithEmail = async (email: string, password: string) => {
+  console.warn('Firebase authentication is disabled. Using local storage instead.');
+  return null;
+};
+
+export const signInWithEmail = async (email: string, password: string) => {
+  console.warn('Firebase authentication is disabled. Using local storage instead.');
+  return null;
+};
+
+export const signOut = async () => {
+  console.warn('Firebase authentication is disabled. Using local storage instead.');
+  return null;
+};
+
+// Firestore utilities
+export const addDocument = async (collectionName: string, data: any) => {
+  console.warn('Firebase Firestore is disabled. Data not saved to database.');
+  return { id: `mock-${Date.now()}` };
+};
 
 export const getDocuments = async (collectionName: string) => {
-  const querySnapshot = await getDocs(collection(db, collectionName));
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+  console.warn('Firebase Firestore is disabled. No data retrieved from database.');
+  return [];
 };
 
-export const updateDocument = (collectionName: string, id: string, data: any) =>
-  updateDoc(doc(db, collectionName, id), data);
+export const updateDocument = async (collectionName: string, id: string, data: any) => {
+  console.warn('Firebase Firestore is disabled. Data not updated in database.');
+  return true;
+};
 
-export const deleteDocument = (collectionName: string, id: string) =>
-  deleteDoc(doc(db, collectionName, id));
+export const deleteDocument = async (collectionName: string, id: string) => {
+  console.warn('Firebase Firestore is disabled. Data not deleted from database.');
+  return true;
+};
+
+export const getDocument = async (collectionName: string, id: string) => {
+  console.warn('Firebase Firestore is disabled. No data retrieved from database.');
+  return null;
+};
+
+export const queryDocuments = async (collectionName: string, field: string, operator: any, value: any) => {
+  console.warn('Firebase Firestore is disabled. No data queried from database.');
+  return [];
+};
 
 // Storage functions
 export const uploadFile = async (file: File, path: string) => {
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  console.warn('Firebase Storage is disabled. File not uploaded.');
+  return 'https://example.com/mock-url';
 };
