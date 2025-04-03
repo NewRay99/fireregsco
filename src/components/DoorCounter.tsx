@@ -1,142 +1,60 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { getDoorCountRanges } from "@/lib/supabase";
+
+type DoorCountRange = {
+  id: number;
+  range_name: string;
+  min_count: number;
+  max_count: number | null;
+  display_order: number;
+};
 
 export default function DoorCounter() {
-  const [doorCount, setDoorCount] = useState<number | null>(null);
+  const [doorCountRanges, setDoorCountRanges] = useState<DoorCountRange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
-    // Check if we're in development mode
-    setIsDev(process.env.NODE_ENV === 'development');
-  }, []);
-
-  useEffect(() => {
-    const fetchDoorCount = async () => {
+    async function loadDoorCountRanges() {
       try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Fetch the door count from our Twitter API endpoint
-        const response = await fetch('/api/twitter/counter');
-        const data = await response.json();
-        
-        // Save debug info
-        setDebugInfo(data);
-        
-        if (!response.ok) {
-          // If API failed but returned a fallback count, use it
-          if (data.fallbackCount) {
-            setDoorCount(data.fallbackCount);
-            setError(`Using fallback count: ${data.error}`);
-          } else {
-            throw new Error(data.error || 'Failed to fetch count from Twitter');
-          }
-        } else if (data.count) {
-          setDoorCount(data.count);
-        } else {
-          throw new Error('No count returned from API');
-        }
+        const ranges = await getDoorCountRanges();
+        setDoorCountRanges(ranges);
       } catch (error) {
-        console.error('Error fetching door count:', error);
-        // Fallback to a default value if all else fails
-        setDoorCount(12311);
-        setError(error instanceof Error ? error.message : String(error));
+        console.error("Error loading door count ranges:", error);
+        // Fallback to hardcoded ranges if API fails
+        setDoorCountRanges([
+          { id: 1, range_name: "20-100", min_count: 20, max_count: 100, display_order: 1 },
+          { id: 2, range_name: "100-200", min_count: 100, max_count: 200, display_order: 2 },
+          { id: 3, range_name: "200-1000", min_count: 200, max_count: 1000, display_order: 3 },
+          { id: 4, range_name: "1000-2000", min_count: 1000, max_count: 2000, display_order: 4 },
+          { id: 5, range_name: "2000+", min_count: 2000, max_count: null, display_order: 5 }
+        ]);
       } finally {
         setIsLoading(false);
       }
-    };
+    }
 
-    fetchDoorCount();
-    
-    // Set up an interval to refresh the count every 5 minutes (300000 ms)
-    // This is to avoid hitting Twitter API rate limits but still check regularly
-    const intervalId = setInterval(fetchDoorCount, 300000);
-    
-    return () => clearInterval(intervalId);
+    loadDoorCountRanges();
   }, []);
 
-  // Force a refresh of the counter
-  const refreshCounter = () => {
-    setIsLoading(true);
-    fetch('/api/twitter/counter?refresh=' + Date.now())
-      .then(response => response.json())
-      .then(data => {
-        setDebugInfo(data);
-        if (data.count) {
-          setDoorCount(data.count);
-          setError(null);
-        } else if (data.fallbackCount) {
-          setDoorCount(data.fallbackCount);
-          setError(`Using fallback count: ${data.error}`);
-        } else {
-          setError(data.error || 'Failed to fetch count');
-        }
-      })
-      .catch(err => {
-        console.error('Error refreshing counter:', err);
-        setError(err.message || 'Error refreshing');
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  };
-
-  // Format number with commas
-  const formatNumber = (num: number) => {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
+  if (isLoading) {
+    return <div>Loading door count options...</div>;
+  }
 
   return (
-    <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 shadow-lg">
-      <div className="text-center">
-        <h3 className="text-xl font-bold mb-1">Fire Doors Inspected</h3>
-        {isLoading ? (
-          <div className="flex justify-center items-center h-16">
-            <div className="animate-pulse flex space-x-1">
-              <div className="h-3 w-3 bg-white rounded-full"></div>
-              <div className="h-3 w-3 bg-white rounded-full"></div>
-              <div className="h-3 w-3 bg-white rounded-full"></div>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="text-4xl font-bold mb-1 tabular-nums">
-              {doorCount !== null ? formatNumber(doorCount) : "0"}
-            </div>
-            <p className="text-xs opacity-75">#fireregscocounter</p>
-            
-            {isDev && (
-              <div className="mt-2">
-                <button 
-                  onClick={refreshCounter}
-                  className="text-xs bg-blue-600 text-white py-1 px-2 rounded hover:bg-blue-700"
-                >
-                  Refresh Counter
-                </button>
-                
-                {error && (
-                  <p className="text-xs text-yellow-200 mt-1">
-                    {error}
-                  </p>
-                )}
-                
-                {debugInfo && debugInfo.tweet && (
-                  <div className="text-xs text-left bg-black/30 p-2 mt-2 rounded">
-                    <p className="font-bold">Tweet found:</p>
-                    <p className="italic">"{debugInfo.tweet}"</p>
-                    <p className="mt-1">Count: {debugInfo.count}</p>
-                    <p>Updated: {new Date(debugInfo.updated).toLocaleTimeString()}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+      {doorCountRanges.map((range) => (
+        <div
+          key={range.id}
+          className="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow"
+        >
+          <h3 className="text-2xl font-bold text-red-700 mb-2">
+            {range.range_name}
+          </h3>
+          <p className="text-gray-600">Fire Doors</p>
+        </div>
+      ))}
     </div>
   );
 } 

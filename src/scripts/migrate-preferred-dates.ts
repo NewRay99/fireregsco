@@ -23,9 +23,9 @@ async function migrateDates() {
   console.log('Starting preferred_date migration...');
 
   try {
-    // Fetch all leads with non-null preferred_date
-    const { data: leads, error } = await supabase
-      .from('leads')
+    // Fetch all sales with non-null preferred_date
+    const { data: sales, error } = await supabase
+      .from('sales')
       .select('id, preferred_date')
       .not('preferred_date', 'is', null);
 
@@ -33,12 +33,12 @@ async function migrateDates() {
       throw error;
     }
 
-    console.log(`Found ${leads.length} leads with preferred_date to migrate`);
+    console.log(`Found ${sales.length} sales with preferred_date to migrate`);
 
     let successCount = 0;
     let failureCount = 0;
 
-    for (const lead of leads) {
+    for (const lead of sales) {
       try {
         if (!lead.preferred_date) continue;
         
@@ -68,7 +68,7 @@ async function migrateDates() {
           
           // Update the lead with the new timestamp
           const { error: updateError } = await supabase
-            .from('leads')
+            .from('sales')
             .update({ preferred_date: timestampValue })
             .eq('id', lead.id);
             
@@ -82,7 +82,7 @@ async function migrateDates() {
           console.error(`Error parsing date for lead ${lead.id}:`, parseError);
           // Set to null if we can't parse it
           const { error: updateError } = await supabase
-            .from('leads')
+            .from('sales')
             .update({ preferred_date: null })
             .eq('id', lead.id);
             

@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           });
         }
       } else {
-        // Try to get all leads from cache
+        // Try to get all sales from cache
         cachedData = sheetDataCache.get<Lead[]>(CACHE_KEYS.ALL_LEADS);
         if (cachedData) {
           return NextResponse.json({
@@ -85,13 +85,13 @@ export async function GET(request: NextRequest) {
     // If we have a Google Sheets URL, try to fetch from it first
     if (sheetsWebAppUrl) {
       try {
-        console.log('Attempting to fetch leads from Google Sheets...');
+        console.log('Attempting to fetch sales from Google Sheets...');
         
         // Add a timestamp parameter to prevent caching
         const timestamp = new Date().getTime();
         
         // Fetch data from Google Sheets
-        const response = await fetch(`${sheetsWebAppUrl}?action=getLeads&_=${timestamp}`, {
+        const response = await fetch(`${sheetsWebAppUrl}?action=getSales&_=${timestamp}`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -110,12 +110,12 @@ export async function GET(request: NextRequest) {
             // Try to parse the response as JSON
             const data = JSON.parse(responseText);
             
-            if (data.success && data.leads && Array.isArray(data.leads)) {
-              console.log(`Successfully fetched ${data.leads.length} leads from Google Sheets`);
+            if (data.success && data.sales && Array.isArray(data.sales)) {
+              console.log(`Successfully fetched ${data.sales.length} sales from Google Sheets`);
               
               // Log a sample lead structure to debug trackingHistory
-              if (data.leads.length > 0) {
-                const sampleLead = data.leads[0];
+              if (data.sales.length > 0) {
+                const sampleLead = data.sales[0];
                 console.log('Sample lead structure:', {
                   id: sampleLead.id,
                   email: sampleLead.email,
@@ -133,8 +133,8 @@ export async function GET(request: NextRequest) {
                 }
               }
               
-              // Ensure all leads have a tracking history array
-              const processedLeads = data.leads.map((lead: Lead) => {
+              // Ensure all sales have a tracking history array
+              const processedSales = data.sales.map((lead: Lead) => {
                 // Process tracking history to ensure notes field exists
                 let trackingHistory = lead.trackingHistory || [];
                 
@@ -162,25 +162,25 @@ export async function GET(request: NextRequest) {
               });
               
               // Update our in-memory cache for backup
-              global.contactData = processedLeads;
+              global.contactData = processedSales;
               
               // Store in cache for future use
-              sheetDataCache.set(CACHE_KEYS.ALL_LEADS, processedLeads, { ttl: 2 * 60 * 1000 }); // 2 minute TTL
+              sheetDataCache.set(CACHE_KEYS.ALL_LEADS, processedSales, { ttl: 2 * 60 * 1000 }); // 2 minute TTL
               
-              // Cache individual leads by ID and email
-              processedLeads.forEach((lead: Lead) => {
+              // Cache individual sales by ID and email
+              processedSales.forEach((lead: Lead) => {
                 sheetDataCache.set(CACHE_KEYS.LEAD_BY_ID(lead.id), lead, { ttl: 5 * 60 * 1000 }); // 5 minute TTL
                 
-                // Find all leads with the same email (for email-based matching)
-                const emailLeads = processedLeads.filter((l: Lead) => 
+                // Find all sales with the same email (for email-based matching)
+                const emailSales = processedSales.filter((l: Lead) => 
                   l.email.toLowerCase() === lead.email.toLowerCase()
                 );
-                sheetDataCache.set(CACHE_KEYS.LEAD_BY_EMAIL(lead.email), emailLeads, { ttl: 5 * 60 * 1000 });
+                sheetDataCache.set(CACHE_KEYS.LEAD_BY_EMAIL(lead.email), emailSales, { ttl: 5 * 60 * 1000 });
               });
               
               // Handle specific request types
               if (leadId) {
-                const requestedLead = processedLeads.find((lead: Lead) => lead.id === leadId);
+                const requestedLead = processedSales.find((lead: Lead) => lead.id === leadId);
                 if (requestedLead) {
                   return NextResponse.json({
                     success: true,
@@ -189,22 +189,22 @@ export async function GET(request: NextRequest) {
                   });
                 }
               } else if (email) {
-                const emailLeads = processedLeads.filter((lead: Lead) => 
+                const emailSales = processedSales.filter((lead: Lead) => 
                   lead.email.toLowerCase() === email.toLowerCase()
                 );
-                if (emailLeads.length > 0) {
+                if (emailSales.length > 0) {
                   return NextResponse.json({
                     success: true,
-                    data: emailLeads,
+                    data: emailSales,
                     source: 'google_sheets'
                   });
                 }
               }
               
-              // Return all leads if no specific leads requested or found
+              // Return all sales if no specific sales requested or found
               return NextResponse.json({
                 success: true,
-                data: processedLeads,
+                data: processedSales,
                 source: 'google_sheets'
               });
             }
@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
           console.error('Bad response from Google Sheets:', response.status, response.statusText);
         }
         
-        console.log('Failed to fetch leads from Google Sheets, falling back to in-memory database');
+        console.log('Failed to fetch sales from Google Sheets, falling back to in-memory database');
       } catch (error) {
         console.error('Error fetching from Google Sheets:', error);
         console.log('Falling back to in-memory database after error');
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
     
     // If Google Sheets fetch failed or we don't have a URL, use in-memory database
     if (global.contactData && global.contactData.length > 0) {
-      console.log('Returning leads from in-memory database:', global.contactData.length);
+      console.log('Returning sales from in-memory database:', global.contactData.length);
       return NextResponse.json({
         success: true,
         data: global.contactData,
@@ -236,7 +236,7 @@ export async function GET(request: NextRequest) {
     }
     
     // If no data available yet, initialize with mock data
-    const mockLeads = [
+    const mockSales = [
       {
         id: 'contact-5678-90ab-cdef',
         name: 'John Smith',
@@ -340,7 +340,7 @@ export async function GET(request: NextRequest) {
     
     // Initialize our in-memory database with mock data if it doesn't exist
     if (!global.contactData) {
-      global.contactData = mockLeads;
+      global.contactData = mockSales;
       console.log('Initialized in-memory database with mock data');
     }
     
@@ -350,12 +350,12 @@ export async function GET(request: NextRequest) {
       source: 'mock'
     });
   } catch (error) {
-    console.error('Error fetching leads:', error);
+    console.error('Error fetching sales:', error);
     
     return NextResponse.json(
       {
         success: false,
-        message: 'Failed to fetch leads',
+        message: 'Failed to fetch sales',
         error: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }

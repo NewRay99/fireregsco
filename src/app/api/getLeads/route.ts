@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const idParam = searchParams.get('id');
     const nocache = searchParams.get('nocache') === 'true';
 
-    console.log(`GET request for leads. Params: email=${emailParam || 'none'}, id=${idParam || 'none'}, nocache=${nocache}`);
+    console.log(`GET request for sales. Params: email=${emailParam || 'none'}, id=${idParam || 'none'}, nocache=${nocache}`);
 
     // Check for email - primary way to look up a specific lead
     if (emailParam) {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       const supabase = getServiceSupabase();
       
       const { data: lead, error } = await supabase
-        .from('leads')
+        .from('sales')
         .select('*')
         .eq('email', emailParam.toLowerCase())
         .order('created_at', { ascending: false })
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       const supabase = getServiceSupabase();
       
       const { data: lead, error } = await supabase
-        .from('leads')
+        .from('sales')
         .select('*')
         .eq('id', idParam)
         .single();
@@ -151,40 +151,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(response);
     }
     
-    // Fallback to returning all leads if no specific parameters provided
+    // Fallback to returning all sales if no specific parameters provided
     // Try to get from cache first
     if (!nocache) {
       const cachedData = sheetDataCache.get(CACHE_KEYS.ALL_LEADS);
       if (cachedData) {
-        console.log('[Cache] Returning cached list of all leads');
+        console.log('[Cache] Returning cached list of all sales');
         return NextResponse.json(cachedData);
       }
     }
     
-    // Fetch all leads from Supabase
-    console.log('Fetching all leads from Supabase');
+    // Fetch all sales from Supabase
+    console.log('Fetching all sales from Supabase');
     
     // Initialize Supabase client with service role
     const supabase = getServiceSupabase();
     
-    const { data: leads, error } = await supabase
-      .from('leads')
+    const { data: sales, error } = await supabase
+      .from('sales')
       .select('*')
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching all leads:', error);
-      throw new Error(`Failed to fetch leads: ${error.message}`);
+      console.error('Error fetching all sales:', error);
+      throw new Error(`Failed to fetch sales: ${error.message}`);
     }
     
-    // Format all leads
-    const formattedLeads = leads.map((lead: any) => formatLeadFromSupabase(lead));
+    // Format all sales
+    const formattedSales = sales.map((lead: any) => formatLeadFromSupabase(lead));
     
     // Create the response
     const response = {
       success: true,
-      message: `Retrieved ${formattedLeads.length} leads`,
-      data: formattedLeads
+      message: `Retrieved ${formattedSales.length} sales`,
+      data: formattedSales
     };
     
     // Cache the result
@@ -193,11 +193,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
     
   } catch (error) {
-    console.error('Error in GET /api/getLeads:', error);
+    console.error('Error in GET /api/getSales:', error);
     
     return NextResponse.json({
       success: false,
-      message: error instanceof Error ? error.message : 'An error occurred while retrieving leads',
+      message: error instanceof Error ? error.message : 'An error occurred while retrieving sales',
     }, { status: 500 });
   }
 } 

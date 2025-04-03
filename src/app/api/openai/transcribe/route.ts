@@ -1,38 +1,62 @@
-import { NextResponse } from "next/server";
-import fs from "fs";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
 
-const openai = new OpenAI();
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-export async function POST(req: Request) {
-  const body = await req.json();
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-  const base64Audio = body.audio;
-
-  // Convert the base64 audio data to a Buffer
-  const audio = Buffer.from(base64Audio, "base64");
-
-  // Define the file path for storing the temporary WAV file
-  const filePath = "tmp/input.wav";
-
+export async function POST(req: NextRequest) {
   try {
-    // Write the audio data to a temporary WAV file synchronously
-    fs.writeFileSync(filePath, audio);
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
+    const userId = formData.get("userId") as string;
+    
+    if (!file) {
+      return NextResponse.json(
+        { error: "No file provided" },
+        { status: 400 }
+      );
+    }
 
-    // Create a readable stream from the temporary WAV file
-    const readStream = fs.createReadStream(filePath);
+    // Convert file to buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const data = await openai.audio.transcriptions.create({
-      file: readStream,
+    // Transcribe with OpenAI
+    const response = await openai.audio.transcriptions.create({
+      file: new File([buffer], file.name, { type: file.type }),
       model: "whisper-1",
     });
 
-    // Remove the temporary file after successful processing
-    fs.unlinkSync(filePath);
+    // Store transcription in Supabase
+    if (userId) {
+      const { error } = await supabase
+        .from('transcriptions')
+        .insert({
+          user_id: userId,
+          content: response.text,
+          created_at: new Date().toISOString(),
+        });
+        
+      if (error) {
+        console.error("Error storing transcription:", error);
+      }
+    }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ text: response.text });
   } catch (error) {
-    console.error("Error processing audio:", error);
-    return NextResponse.error();
+    console.error("Transcription error:", error);
+    return NextResponse.json(
+      { error: "Failed to transcribe audio" },
+      { status: 500 }
+    );
   }
 }
+

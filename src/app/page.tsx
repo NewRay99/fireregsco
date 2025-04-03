@@ -4,8 +4,26 @@ import Navbar from "@/components/Navbar";
 import ContactForm from "@/components/ContactForm";
 import Testimonial from "@/components/Testimonial";
 import DoorCounter from "@/components/DoorCounter";
+import { createClient } from "@supabase/supabase-js";
 
 export default function Home() {
+  const fetchDataFromSupabase = async () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data, error } = await supabase
+      .from('your_table')
+      .select('*');
+      
+    if (error) {
+      console.error('Error fetching data:', error);
+      return [];
+    }
+    
+    return data;
+  };
+
   return (
     <main className="min-h-screen">
       <Navbar />
@@ -192,8 +210,8 @@ export default function Home() {
                 <Link href="#contact" className="text-red-700 font-semibold hover:underline">
                   Learn more →
                 </Link>
-      </div>
-      </div>
+              </div>
+            </div>
 
             {/* Service 3 */}
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">

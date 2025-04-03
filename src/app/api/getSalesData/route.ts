@@ -58,32 +58,32 @@ export async function GET(request: NextRequest) {
 
     const startDateISO = startDate.toISOString();
     
-    console.log(`Fetching leads from Supabase with created_at >= ${startDateISO}`);
+    console.log(`Fetching sales from Supabase with created_at >= ${startDateISO}`);
 
     // Initialize Supabase client with service role
     const supabase = getServiceSupabase();
     
-    // Fetch leads for the time period
-    const { data: leads, error } = await supabase
-      .from('leads')
+    // Fetch sales for the time period
+    const { data: sales, error } = await supabase
+      .from('sales')
       .select('*')
       .gte('created_at', startDateISO)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching leads for sales data:', error);
-      throw new Error(`Failed to fetch leads: ${error.message}`);
+      console.error('Error fetching sales for sales data:', error);
+      throw new Error(`Failed to fetch sales: ${error.message}`);
     }
 
-    // Process statistics from the leads
+    // Process statistics from the sales
     const stats = {
-      total: leads.length,
+      total: sales.length,
       statuses: {} as Record<string, number>,
       propertyTypes: {} as Record<string, number>,
-      leadsByDay: {} as Record<string, number>
+      salesByDay: {} as Record<string, number>
     };
 
-    leads.forEach(lead => {
+    sales.forEach(lead => {
       // Count statuses
       const status = lead.status || 'unknown';
       stats.statuses[status] = (stats.statuses[status] || 0) + 1;
@@ -94,22 +94,22 @@ export async function GET(request: NextRequest) {
       
       // Group by day for trend analysis
       const day = lead.created_at.split('T')[0]; // YYYY-MM-DD format
-      stats.leadsByDay[day] = (stats.leadsByDay[day] || 0) + 1;
+      stats.salesByDay[day] = (stats.salesByDay[day] || 0) + 1;
     });
 
     // Sort days chronologically
-    const sortedDays = Object.keys(stats.leadsByDay).sort();
-    const sortedLeadsByDay = sortedDays.reduce((acc, day) => {
-      acc[day] = stats.leadsByDay[day];
+    const sortedDays = Object.keys(stats.salesByDay).sort();
+    const sortedSalesByDay = sortedDays.reduce((acc, day) => {
+      acc[day] = stats.salesByDay[day];
       return acc;
     }, {} as Record<string, number>);
 
-    stats.leadsByDay = sortedLeadsByDay;
+    stats.salesByDay = sortedSalesByDay;
 
     // Create response data
     const response = {
       success: true,
-      message: `Retrieved sales data for ${range} (${leads.length} leads)`,
+      message: `Retrieved sales data for ${range} (${sales.length} sales)`,
       data: {
         stats,
         timeRange: {

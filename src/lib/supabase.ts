@@ -3,53 +3,53 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Create client for client-side usage
+// Client-side Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Create a server-side client with service role when available
-// This bypasses RLS and should only be used in API routes
+// For server-side operations that need more privileges
 export const getServiceSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Supabase credentials not configured');
+  if (!serviceRoleKey) {
+    console.error("SUPABASE_SERVICE_ROLE_KEY is not defined in environment variables");
+    // Fall back to anon key if service role key is not available
+    return supabase;
   }
   
-  return createClient(supabaseUrl, supabaseServiceKey);
+  return createClient(supabaseUrl, serviceRoleKey);
 };
 
-// Helper function to convert a lead to the format expected by Supabase
-export const formatLeadForSupabase = (lead: any) => {
+// Helper function to convert a sale to the format expected by Supabase
+export const formatSaleForSupabase = (sale: any) => {
   // Convert preferred date format if it exists
   let preferredDate = null;
-  if (lead.preferredDate) {
+  if (sale.preferredDate) {
     try {
-      preferredDate = new Date(lead.preferredDate).toISOString();
+      preferredDate = new Date(sale.preferredDate).toISOString();
     } catch (e) {
-      console.warn(`Error parsing preferred date: ${lead.preferredDate}`);
+      console.warn(`Error parsing preferred date: ${sale.preferredDate}`);
     }
   }
   
   // Use the current timestamp if one isn't provided
-  const timestamp = lead.timestamp || new Date().toISOString();
+  const timestamp = sale.timestamp || new Date().toISOString();
   
   return {
-    name: lead.name,
-    email: lead.email,
-    phone: lead.phone,
-    property_type: lead.propertyType,
-    door_count: lead.doorCount,
-    message: lead.message || '',
-    status: lead.status || 'pending',
+    name: sale.name,
+    email: sale.email,
+    phone: sale.phone,
+    property_type: sale.propertyType,
+    door_count: sale.doorCount,
+    message: sale.message || '',
+    status: sale.status || 'pending',
     preferred_date: preferredDate,
     created_at: timestamp,
-    updated_at: lead.updatedAt || timestamp
+    updated_at: sale.updatedAt || timestamp
   };
 };
 
 // Helper function to convert Supabase response to the format expected by the app
-export const formatLeadFromSupabase = (record: any) => {
+export const formatSaleFromSupabase = (record: any) => {
   // Format the preferred date for display
   let preferredDateFormatted = '';
   
@@ -92,9 +92,9 @@ function isValidISODate(dateString: string) {
 }
 
 // Helper function to format status tracking data for Supabase
-export const formatStatusTrackingForSupabase = (tracking: any) => {
+export const formatSalesTrackingForSupabase = (tracking: any) => {
   return {
-    lead_id: tracking.lead_id,
+    sale_id: tracking.sale_id,
     status: tracking.status,
     notes: tracking.notes || '',
     created_at: tracking.timestamp || new Date().toISOString()
@@ -102,16 +102,51 @@ export const formatStatusTrackingForSupabase = (tracking: any) => {
 };
 
 // Helper function to convert Supabase status tracking to app format
-export const formatStatusTrackingFromSupabase = (record: any) => {
+export const formatSalesTrackingFromSupabase = (record: any) => {
   return {
-    leadId: record.lead_id,
+    saleId: record.sale_id,
     status: record.status,
     notes: record.notes,
     timestamp: record.created_at
   };
 };
 
-// Helper function to format Twitter scrape history for Supabase
+// Helper function to format support ticket for Supabase
+export const formatSupportTicketForSupabase = (ticket: any) => {
+  return {
+    title: ticket.title,
+    description: ticket.description,
+    user_id: ticket.userId || null,
+    user_email: ticket.userEmail || null,
+    status: ticket.status || 'open',
+    priority: ticket.priority || 'medium',
+    category: ticket.category || 'general',
+    assignee_id: ticket.assigneeId || null,
+    resolution: ticket.resolution || null,
+    created_at: ticket.createdAt || new Date().toISOString(),
+    updated_at: ticket.updatedAt || new Date().toISOString()
+  };
+};
+
+// Helper function to convert Supabase support ticket to app format
+export const formatSupportTicketFromSupabase = (record: any) => {
+  return {
+    id: record.id,
+    title: record.title,
+    description: record.description,
+    userId: record.user_id,
+    userEmail: record.user_email,
+    status: record.status,
+    priority: record.priority,
+    category: record.category,
+    assigneeId: record.assignee_id,
+    resolution: record.resolution,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at
+  };
+};
+
+// Helper function for Twitter scrape history (keeping this from your existing code)
 export const formatTwitterScrapeHistoryForSupabase = (scrapeData: any) => {
   return {
     twitter_handle: scrapeData.twitterHandle,
@@ -183,4 +218,117 @@ export const recordTwitterScrape = async (
   }
   
   return data;
-}; 
+};
+
+// Function to get door count ranges from Supabase
+export const getDoorCountRanges = async () => {
+  const { data, error } = await supabase
+    .from('door_count_ranges')
+    .select('*')
+    .order('display_order', { ascending: true });
+    
+  if (error) {
+    console.error('Error fetching door count ranges:', error);
+    return [];
+  }
+  
+  return data;
+};
+
+// Function to get status workflow from Supabase
+export const getStatusWorkflow = async () => {
+  const { data, error } = await supabase
+    .from('status_workflow')
+    .select('*')
+    .order('current_status', { ascending: true });
+    
+  if (error) {
+    console.error('Error fetching status workflow:', error);
+    return [];
+  }
+  
+  return data;
+};
+
+// Function to get next available statuses for a given status
+export const getNextStatuses = async (currentStatus: string) => {
+  const { data, error } = await supabase
+    .from('status_workflow')
+    .select('next_statuses')
+    .eq('current_status', currentStatus)
+    .single();
+    
+  if (error) {
+    console.error(`Error fetching next statuses for ${currentStatus}:`, error);
+    return [];
+  }
+  
+  return data?.next_statuses || [];
+};
+
+// Add this function to check and create required tables
+export const ensureRequiredTables = async () => {
+  try {
+    // First try with the regular client
+    console.log("Checking if sales_tracking table exists...");
+    
+    // Check if we can query the sales_tracking table
+    const { data: trackingData, error: trackingError } = await supabase
+      .from('sales_tracking')
+      .select('*')
+      .limit(1);
+    
+    if (trackingError) {
+      console.error("Error checking sales_tracking table:", trackingError);
+      
+      // If the table doesn't exist, we need to create it
+      if (trackingError.message.includes("does not exist")) {
+        console.log("sales_tracking table doesn't exist, attempting to create it...");
+        
+        try {
+          // Try to use the service role client
+          const supabaseAdmin = getServiceSupabase();
+          
+          // Create the sales_tracking table
+          const { error: createError } = await supabaseAdmin
+            .rpc('execute_sql', {
+              sql_query: `
+                CREATE TABLE IF NOT EXISTS sales_tracking (
+                  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                  sale_id UUID NOT NULL REFERENCES sales(id),
+                  status TEXT NOT NULL,
+                  notes TEXT,
+                  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                  updated_by TEXT
+                );
+                
+                CREATE INDEX idx_sales_tracking_sale_id ON sales_tracking(sale_id);
+              `
+            });
+          
+          if (createError) {
+            console.error("Error creating sales_tracking table:", createError);
+            return false;
+          }
+          
+          console.log("sales_tracking table created successfully");
+          return true;
+        } catch (err) {
+          console.error("Failed to create sales_tracking table:", err);
+          alert("Could not create the sales_tracking table. Please check your Supabase configuration and ensure the service role key is set correctly.");
+          return false;
+        }
+      }
+      
+      return false;
+    }
+    
+    console.log("sales_tracking table exists:", trackingData);
+    return true;
+  } catch (error) {
+    console.error("Error in ensureRequiredTables:", error);
+    return false;
+  }
+};
+
+// Call this function when the app initializes 

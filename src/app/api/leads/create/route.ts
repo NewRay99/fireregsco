@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     
     // Insert the lead
     const { data: lead, error } = await supabase
-      .from('leads')
+      .from('sales')
       .insert(formattedLead)
       .select()
       .single();

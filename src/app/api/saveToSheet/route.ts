@@ -37,7 +37,7 @@ interface Lead {
 function invalidateLeadCaches(email?: string, id?: string) {
   console.log(`[Cache] Invalidating caches for changes to lead: ${id || 'unknown ID'}, email: ${email || 'unknown email'}`);
   
-  // Always invalidate the all leads cache
+  // Always invalidate the all sales cache
   sheetDataCache.invalidate(CACHE_KEYS.ALL_LEADS);
   
   // Invalidate specific caches if we have email or ID
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       doorCount: formData.doorCount || '',
       preferredDate: formData.preferredDate || '',
       message: formData.message || '',
-      status: 'pending' // Initial status for all new leads
+      status: 'pending' // Initial status for all new sales
     };
     
     // Google Sheets Web App URL - replace with your deployed Google Apps Script web app URL

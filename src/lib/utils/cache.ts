@@ -131,8 +131,8 @@ export const sheetDataCache = SheetDataCache.getInstance();
 
 // Cache keys for different types of data
 export const CACHE_KEYS = {
-  LEADS: 'leads',
+  LEADS: 'sales',
   LEAD_BY_ID: (id: string) => `lead_${id}`,
   LEAD_BY_EMAIL: (email: string) => `lead_email_${email.toLowerCase()}`,
-  ALL_LEADS: 'all_leads',
+  ALL_LEADS: 'all_sales',
 }; 

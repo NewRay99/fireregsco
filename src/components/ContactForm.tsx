@@ -19,10 +19,40 @@ export default function ContactForm() {
     message: string;
   } | null>(null);
   const [isDev, setIsDev] = useState(false);
+  const [doorCountRanges, setDoorCountRanges] = useState<Array<{
+    id: number;
+    range_name: string;
+    min_count: number;
+    max_count: number | null;
+    display_order: number;
+  }>>([]);
 
   useEffect(() => {
     // Check if we're in development mode
     setIsDev(process.env.NODE_ENV === 'development');
+  }, []);
+
+  useEffect(() => {
+    // Load door count ranges from Supabase
+    async function loadDoorCountRanges() {
+      try {
+        const { getDoorCountRanges } = await import('@/lib/supabase');
+        const ranges = await getDoorCountRanges();
+        setDoorCountRanges(ranges);
+      } catch (error) {
+        console.error("Error loading door count ranges:", error);
+        // Fallback to hardcoded ranges
+        setDoorCountRanges([
+          { id: 1, range_name: "20-100", min_count: 20, max_count: 100, display_order: 1 },
+          { id: 2, range_name: "100-200", min_count: 100, max_count: 200, display_order: 2 },
+          { id: 3, range_name: "200-1000", min_count: 200, max_count: 1000, display_order: 3 },
+          { id: 4, range_name: "1000-2000", min_count: 1000, max_count: 2000, display_order: 4 },
+          { id: 5, range_name: "2000+", min_count: 2000, max_count: null, display_order: 5 }
+        ]);
+      }
+    }
+    
+    loadDoorCountRanges();
   }, []);
 
   // Add a useEffect to clear success messages after 5 seconds
@@ -161,28 +191,49 @@ export default function ContactForm() {
         throw new Error(emailResult.message || 'Failed to send the email');
       }
       
-      // Also save to Google Sheets
+      // Save to Supabase via the sales API
       try {
-        const sheetResponse = await fetch('/api/saveToSheet', {
+        console.log('Submitting to Supabase sales table:', {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          propertyType: formData.propertyType,
+          doorCount: formData.doorCount,
+          preferredDate: formData.preferredDate,
+          message: formData.message
+        });
+        
+        const supabaseResponse = await fetch('/api/sales', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            formData
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            propertyType: formData.propertyType,
+            doorCount: formData.doorCount,
+            preferredDate: formData.preferredDate,
+            message: formData.message
           }),
         });
         
-        const sheetResult = await sheetResponse.json();
+        // Log the raw response for debugging
+        console.log('Supabase API response status:', supabaseResponse.status);
         
-        if (!sheetResponse.ok) {
-          console.warn('Form submitted but failed to save to Google Sheets:', sheetResult.error);
+        const supabaseResult = await supabaseResponse.json();
+        
+        console.log('Supabase API response body:', supabaseResult);
+        
+        if (!supabaseResponse.ok) {
+          console.warn('Form submitted but failed to save to Supabase:', supabaseResult.error);
         } else {
-          console.log('Form data saved to Google Sheets:', sheetResult);
+          console.log('Form data saved to Supabase sales table successfully');
         }
-      } catch (sheetError) {
-        // Don't fail the form submission if Google Sheets fails
-        console.warn('Error saving to Google Sheets:', sheetError);
+      } catch (dbError) {
+        // Don't fail the form submission if Supabase save fails
+        console.error('Error saving to Supabase:', dbError);
       }
       
       setSubmitStatus({
@@ -303,11 +354,11 @@ export default function ContactForm() {
           required
         >
           <option value="">Select range</option>
-          <option value="20-100">20-100 doors</option>
-          <option value="100-200">100-200 doors</option>
-          <option value="200-1000">200-1000 doors</option>
-          <option value="1000-2000">1000-2000 doors</option>
-          <option value="2000+">2000+ doors</option>
+          {doorCountRanges.map(range => (
+            <option key={range.id} value={range.range_name}>
+              {range.range_name} doors
+            </option>
+          ))}
         </select>
       </div>
       <div>

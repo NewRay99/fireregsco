@@ -14,6 +14,14 @@ This doesn't really matter, but is useful for the AI to understand more about th
 - Firebase Auth, Storage, and Database
 - Multiple AI endpoints including OpenAI, Anthropic, and Replicate using Vercel's AI SDK
 
+## Supabase Configuration
+
+This project uses Supabase for database and authentication. Follow these steps to set up your Supabase project:
+
+1. Create a new project on [Supabase](https://supabase.com)
+2. Get your project URL and anon key from the API settings
+3. Add these to your `.env.local` file:
+
 ## Supabase Database Migration Guide
 
 The application has been updated to use Supabase instead of Google Sheets for faster database operations. Here's how to set up and migrate:
@@ -60,13 +68,13 @@ The application still has the Google Sheets implementation in the codebase. If y
 
 The migration creates three tables in Supabase:
 
-1. `leads` - Stores lead information (name, email, etc.)
+1. `sales` - Stores lead information (name, email, etc.)
 2. `status_tracking` - Records status history for each lead
 3. `status_workflow` - Defines allowed status transitions
 
 ## Preferred Date Migration Instructions
 
-The `preferred_date` field in the Supabase leads table has been updated from `TEXT` to `TIMESTAMP WITH TIME ZONE` for improved date handling. Here's how to handle the migration:
+The `preferred_date` field in the Supabase sales table has been updated from `TEXT` to `TIMESTAMP WITH TIME ZONE` for improved date handling. Here's how to handle the migration:
 
 ### 1. Database Schema Changes
 

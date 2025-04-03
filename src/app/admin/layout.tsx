@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -22,8 +22,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       ) 
     },
     { 
-      name: 'Leads', 
-      path: '/admin/leads',
+      name: 'Sales', 
+      path: '/admin/sales',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
           <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
@@ -31,8 +31,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )
     },
     { 
-      name: 'Log', 
-      path: '/admin/logs',
+      name: 'Supoort', 
+      path: '/admin/support',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z" clipRule="evenodd" />
@@ -65,6 +65,29 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
     return pathname.startsWith(path);
   };
+
+  useEffect(() => {
+    const checkTables = async () => {
+      try {
+        const response = await fetch('/api/admin/check-tables');
+        const data = await response.json();
+        console.log("Table check result:", data);
+        
+        if (data.success) {
+          console.log(`Found ${data.tracking.count} tracking records`);
+          console.log(`Found ${data.sales.count} sales records`);
+          
+          if (data.tracking.count > 0) {
+            console.log("Sample tracking data:", data.tracking.sample);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking tables:", error);
+      }
+    };
+    
+    checkTables();
+  }, []);
 
   return (
     <div className="min-h-screen bg-light">

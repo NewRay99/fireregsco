@@ -37,8 +37,8 @@ const STATUSES = {
   COMPLETED: 'completed'
 };
 
-export default function LeadsAdminPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+export default function SalesAdminPage() {
+  const [sales, setSales] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -55,53 +55,53 @@ export default function LeadsAdminPage() {
   const searchType = 'email';
   const searchValue = selectedLead?.email || '';
 
-  // Fetch leads from the API
+  // Fetch sales from the API
   useEffect(() => {
-    const fetchLeads = async (forceFresh = false) => {
+    const fetchSales = async (forceFresh = false) => {
       setLoading(true);
       try {
         // Add cache-busting parameter to force fresh data
         const timestamp = new Date().getTime();
         // Add forceFresh parameter if needed to bypass cache
         const freshParam = forceFresh ? '&fresh=true' : '';
-        const response = await fetch(`/api/leads?_=${timestamp}${freshParam}`);
+        const response = await fetch(`/api/sales?_=${timestamp}${freshParam}`);
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch leads: ${response.status}`);
+          throw new Error(`Failed to fetch sales: ${response.status}`);
         }
         
         const data = await response.json();
         
         if (data.success && data.data) {
-          // Group leads by email to avoid duplicates
-          const groupedLeads = groupLeadsByEmail(data.data);
-          setLeads(groupedLeads);
+          // Group sales by email to avoid duplicates
+          const groupedSales = groupSalesByEmail(data.data);
+          setSales(groupedSales);
           
           // Set the data source for displaying to user
           if (data.source) {
             setDataSource(data.source);
             console.log(`Data source: ${data.source}${data.cacheType ? ', type: ' + data.cacheType : ''}`);
           }
-          console.log('Fetched leads:', groupedLeads.length);
+          console.log('Fetched sales:', groupedSales.length);
         } else {
-          throw new Error(data.message || 'Failed to fetch leads');
+          throw new Error(data.message || 'Failed to fetch sales');
         }
       } catch (err) {
-        console.error('Error fetching leads:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch leads');
+        console.error('Error fetching sales:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch sales');
       } finally {
         setLoading(false);
       }
     };
     
-    fetchLeads();
+    fetchSales();
   }, [refreshTrigger]); // Triggered on refresh change
 
-  // Group leads by email address and keep most recent
-  const groupLeadsByEmail = (leads: Lead[]): Lead[] => {
+  // Group sales by email address and keep most recent
+  const groupSalesByEmail = (sales: Lead[]): Lead[] => {
     const emailMap: { [key: string]: Lead } = {};
     
-    leads.forEach(lead => {
+    sales.forEach(lead => {
       const email = lead.email;
       
       if (!emailMap[email] || new Date(lead.timestamp) > new Date(emailMap[email].timestamp)) {
@@ -170,7 +170,7 @@ export default function LeadsAdminPage() {
       }
       
       // Update the lead in the UI
-      setLeads(leads.map(lead => 
+      setSales(sales.map(lead => 
         lead.id === selectedLead.id 
           ? { ...lead, status: statusUpdate.status } 
           : lead
@@ -220,44 +220,44 @@ export default function LeadsAdminPage() {
     // Increment the refresh trigger to force a re-fetch
     setRefreshTrigger(prev => prev + 1);
     
-    // If we want to force fresh data, directly call fetchLeads
+    // If we want to force fresh data, directly call fetchSales
     if (forceFresh) {
-      const fetchFreshLeads = async () => {
+      const fetchFreshSales = async () => {
         setLoading(true);
         try {
           // Add cache-busting parameter and fresh parameter to force fresh data
           const timestamp = new Date().getTime();
-          const response = await fetch(`/api/leads?_=${timestamp}&fresh=true`);
+          const response = await fetch(`/api/sales?_=${timestamp}&fresh=true`);
           
           if (!response.ok) {
-            throw new Error(`Failed to fetch leads: ${response.status}`);
+            throw new Error(`Failed to fetch sales: ${response.status}`);
           }
           
           const data = await response.json();
           
           if (data.success && data.data) {
-            // Group leads by email to avoid duplicates
-            const groupedLeads = groupLeadsByEmail(data.data);
-            setLeads(groupedLeads);
+            // Group sales by email to avoid duplicates
+            const groupedSales = groupSalesByEmail(data.data);
+            setSales(groupedSales);
             
             // Set the data source for displaying to user
             if (data.source) {
               setDataSource(data.source);
               console.log(`Refreshed data source: ${data.source}`);
             }
-            console.log('Refreshed leads:', groupedLeads.length);
+            console.log('Refreshed sales:', groupedSales.length);
           } else {
-            throw new Error(data.message || 'Failed to refresh leads');
+            throw new Error(data.message || 'Failed to refresh sales');
           }
         } catch (err) {
-          console.error('Error refreshing leads:', err);
-          setError(err instanceof Error ? err.message : 'Failed to refresh leads');
+          console.error('Error refreshing sales:', err);
+          setError(err instanceof Error ? err.message : 'Failed to refresh sales');
         } finally {
           setLoading(false);
         }
       };
       
-      fetchFreshLeads();
+      fetchFreshSales();
     }
   };
 
@@ -267,16 +267,16 @@ export default function LeadsAdminPage() {
     setSelectedLead(null);
   };
 
-  // Filter leads based on active tab
-  const filteredLeads = leads.filter(lead => lead.status === activeTab);
+  // Filter sales based on active tab
+  const filteredSales = sales.filter(lead => lead.status === activeTab);
 
-  // Count leads by status
+  // Count sales by status
   const leadCounts = {
-    [STATUSES.PENDING]: leads.filter(lead => lead.status === STATUSES.PENDING).length,
-    [STATUSES.NOT_AVAILABLE]: leads.filter(lead => lead.status === STATUSES.NOT_AVAILABLE).length,
-    [STATUSES.CONTACTED]: leads.filter(lead => lead.status === STATUSES.CONTACTED).length,
-    [STATUSES.SENT_INVOICE]: leads.filter(lead => lead.status === STATUSES.SENT_INVOICE).length,
-    [STATUSES.COMPLETED]: leads.filter(lead => lead.status === STATUSES.COMPLETED).length,
+    [STATUSES.PENDING]: sales.filter(lead => lead.status === STATUSES.PENDING).length,
+    [STATUSES.NOT_AVAILABLE]: sales.filter(lead => lead.status === STATUSES.NOT_AVAILABLE).length,
+    [STATUSES.CONTACTED]: sales.filter(lead => lead.status === STATUSES.CONTACTED).length,
+    [STATUSES.SENT_INVOICE]: sales.filter(lead => lead.status === STATUSES.SENT_INVOICE).length,
+    [STATUSES.COMPLETED]: sales.filter(lead => lead.status === STATUSES.COMPLETED).length,
   };
 
   // Format the date for display
@@ -289,9 +289,9 @@ export default function LeadsAdminPage() {
     }
   };
 
-  if (loading && leads.length === 0) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading && sales.length === 0) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   
-  if (error && leads.length === 0) return (
+  if (error && sales.length === 0) return (
     <div className="min-h-screen flex items-center justify-center text-red-600">
       Error: {error}
     </div>
@@ -393,11 +393,11 @@ export default function LeadsAdminPage() {
           <div className="col-span-1 bg-white shadow rounded-lg overflow-hidden">
             <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
               <h2 className="text-lg font-medium text-gray-900">
-                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Leads ({filteredLeads.length})
+                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Sales ({filteredSales.length})
               </h2>
             </div>
             <ul className="divide-y divide-gray-200 max-h-[70vh] overflow-y-auto">
-              {filteredLeads.map(lead => (
+              {filteredSales.map(lead => (
                 <li 
                   key={lead.id}
                   className={`
@@ -420,7 +420,7 @@ export default function LeadsAdminPage() {
                     </div>
                     <div className="flex-shrink-0 ml-2">
                       <Link
-                        href={`/admin/logs?email=${lead.email}`}
+                        href={`/admin/support?email=${lead.email}`}
                         className="p-2 text-secondary hover:text-secondary-dark hover:bg-gray-100 rounded-full transition-colors"
                         onClick={(e) => e.stopPropagation()}
                         title="View Activity Logs"
@@ -433,9 +433,9 @@ export default function LeadsAdminPage() {
                   </div>
                 </li>
               ))}
-              {filteredLeads.length === 0 && (
+              {filteredSales.length === 0 && (
                 <li className="px-4 py-4 text-center text-gray-500">
-                  No leads with status "{activeTab}"
+                  No sales with status "{activeTab}"
                 </li>
               )}
             </ul>
@@ -448,7 +448,7 @@ export default function LeadsAdminPage() {
                 <div className="px-4 py-5 border-b border-gray-200 sm:px-6 flex justify-between items-center">
                   <h2 className="text-lg font-medium text-gray-900">Lead Details</h2>
                   <Link 
-                    href={`/admin/logs?${searchType}=${searchValue}`}
+                    href={`/admin/support?${searchType}=${searchValue}`}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-secondary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -164,8 +164,8 @@ export default function FAQPage() {
               <div className="mt-8 text-sm text-gray-500">
                 <p className="mb-2"><strong>How the lead status flow works:</strong></p>
                 <ol className="list-decimal list-inside space-y-2">
-                  <li>New leads start at <strong>Pending</strong> status</li>
-                  <li>After initial contact, leads move to <strong>Contacted</strong> and then <strong>Interested</strong> if applicable</li>
+                  <li>New sales start at <strong>Pending</strong> status</li>
+                  <li>After initial contact, sales move to <strong>Contacted</strong> and then <strong>Interested</strong> if applicable</li>
                   <li>The booking process flows through <strong>Reserved Booking</strong>, <strong>Sent Invoice</strong>, <strong>Payment Received</strong>, and <strong>Booked</strong></li>
                   <li>After the inspection is completed, the status changes to <strong>Completed Inspection</strong> and then <strong>Completed</strong></li>
                   <li>Post-service statuses include <strong>Aftersales</strong> and <strong>Refunded</strong> if needed</li>
