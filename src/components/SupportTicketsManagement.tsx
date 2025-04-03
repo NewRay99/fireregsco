@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatSupportTicketFromSupabase } from "@/lib/supabase";
-
 interface SupportTicket {
   id: string;
   title: string;
