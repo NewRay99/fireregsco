@@ -416,8 +416,6 @@ export default function SalesManagement() {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-6">Sales Management</h2>
-      
       {sales.length === 0 ? (
         <div className="bg-gray-50 p-6 text-center rounded-md">
           <p className="text-gray-500">No sales records found.</p>

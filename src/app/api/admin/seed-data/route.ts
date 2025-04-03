@@ -75,14 +75,14 @@ const statusNotes = {
     'Project postponed indefinitely',
     'Customer not responding to follow-ups',
     'Budget constraints, cannot proceed at this time',
-    'Customer's needs changed, no longer requires our services'
+    'Customer\'s needs changed, no longer requires our services'
   ],
   'void': [
     'Customer found our quote too expensive',
     'Project cancelled due to property sale',
     'Customer decided to DIY instead',
-    'Timeline couldn't be accommodated',
-    'Product specifications didn't meet customer requirements'
+    'Timeline couldn\'t be accommodated',
+    'Product specifications didn\'t meet customer requirements'
   ]
 };
 
@@ -93,8 +93,8 @@ const voidedSaleNotes = [
   'Customer decided our premium options were outside their budget',
   'Quote was higher than customer expected, decided not to proceed',
   'Customer received a more competitive offer from another provider',
-  'Cost was the primary factor in customer's decision to go elsewhere',
-  'Customer requested significant discounts we couldn't accommodate',
+  'Cost was the primary factor in customer\'s decision to go elsewhere',
+  'Customer requested significant discounts we couldn\'t accommodate',
   'Project scope reduced due to cost concerns, no longer viable'
 ];
 

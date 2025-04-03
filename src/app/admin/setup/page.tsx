@@ -177,7 +177,7 @@ export default function SetupPage() {
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-bold mb-6">Admin Setup</h1>
+        <h1 className="text-3xl font-bold pb-6">Admin Setup</h1>
         
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
