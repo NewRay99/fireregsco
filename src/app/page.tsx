@@ -292,6 +292,12 @@ export default function Home() {
               <p className="text-gray-600 mb-4">
                 As set out by the Regulatory Reform (Fire Safety) Order 2005, building operators in England and Wales should appoint a 'Responsible Person' to manage all fire safety precautions including fire doors. This person might be the employer, the managing agent or owner or another appointed person.
               </p>
+              <p className="mt-6 text-lg leading-8 text-gray-600">
+                We&apos;re committed to ensuring your building&apos;s fire safety compliance.
+              </p>
+              <p className="mt-4 text-gray-600">
+                Let&apos;s work together to protect what matters most.
+              </p>
             </div>
           </div>
         </div>

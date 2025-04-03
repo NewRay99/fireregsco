@@ -545,7 +545,7 @@ export default function SetupPage() {
                         <li>Customer cancels the process</li>
                         <li>Lead becomes invalid</li>
                         <li>No response after multiple attempts</li>
-                        <li>Customer's needs changed</li>
+                        <li>Customer&apos;s needs changed</li>
                       </ul>
                     </div>
                     <div className="bg-yellow-50 p-4 rounded-lg">

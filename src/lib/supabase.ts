@@ -332,3 +332,75 @@ export const ensureRequiredTables = async () => {
 };
 
 // Call this function when the app initializes 
+
+// Types
+export interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  message: string;
+  status: string;
+  preferred_date?: string;
+  created_at: string;
+  updated_at: string;
+  status_tracking?: StatusTracking[];
+}
+
+export interface StatusTracking {
+  id: string;
+  lead_id: string;
+  status: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Utility functions for formatting data
+export function formatLeadForSupabase(lead: Partial<Lead>) {
+  return {
+    name: lead.name,
+    email: lead.email,
+    phone: lead.phone,
+    company: lead.company,
+    message: lead.message,
+    status: lead.status || 'new',
+    preferred_date: lead.preferred_date ? new Date(lead.preferred_date).toISOString() : null
+  };
+}
+
+export function formatLeadFromSupabase(data: any): Lead {
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    company: data.company,
+    message: data.message,
+    status: data.status,
+    preferred_date: data.preferred_date ? new Date(data.preferred_date).toISOString() : undefined,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    status_tracking: data.status_tracking?.map(formatStatusTrackingFromSupabase) || []
+  };
+}
+
+export function formatStatusTrackingForSupabase(tracking: Partial<StatusTracking>) {
+  return {
+    lead_id: tracking.lead_id,
+    status: tracking.status,
+    notes: tracking.notes || ''
+  };
+}
+
+export function formatStatusTrackingFromSupabase(data: any): StatusTracking {
+  return {
+    id: data.id,
+    lead_id: data.lead_id,
+    status: data.status,
+    notes: data.notes || '',
+    created_at: data.created_at,
+    updated_at: data.updated_at
+  };
+} 
