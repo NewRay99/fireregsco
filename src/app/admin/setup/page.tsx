@@ -200,7 +200,7 @@ export default function SetupPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
             >
-              Database Explorer
+              Database Tables
             </button>
             <button
               onClick={() => setActiveTab('seed')}
@@ -213,14 +213,14 @@ export default function SetupPage() {
               Seed Data
             </button>
             <button
-              onClick={() => setActiveTab('settings')}
+              onClick={() => setActiveTab('workflow')}
               className={`${
-                activeTab === 'settings'
+                activeTab === 'workflow'
                   ? 'border-red-500 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
             >
-              Settings
+              Workflow & KPIs
             </button>
           </nav>
         </div>
@@ -464,17 +464,138 @@ export default function SetupPage() {
           </div>
         )}
         
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4">System Settings</h2>
-            <p className="text-gray-600">
-              Configure system-wide settings and preferences.
-            </p>
-            
-            {/* Add your settings controls here */}
-            <div className="mt-4 text-gray-500">
-              Settings configuration coming soon...
+        {/* Workflow Tab */}
+        {activeTab === 'workflow' && (
+          <div className="space-y-8">
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold mb-4">Sales Workflow</h2>
+              <div className="space-y-6">
+                <div className="relative">
+                  {/* Workflow diagram */}
+                  <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                  <div className="space-y-8">
+                    {[
+                      {
+                        status: 'Initial Contact',
+                        description: 'Lead enters the system and initial outreach is made',
+                        nextSteps: ['Contacted']
+                      },
+                      {
+                        status: 'Contacted',
+                        description: 'Customer has been reached and initial discussion completed',
+                        nextSteps: ['Meeting Scheduled', 'On Hold', 'Void']
+                      },
+                      {
+                        status: 'Meeting Scheduled',
+                        description: 'Demo/meeting arranged with the customer',
+                        nextSteps: ['Quote Sent', 'On Hold', 'Void']
+                      },
+                      {
+                        status: 'Quote Sent',
+                        description: 'Pricing proposal has been sent to customer',
+                        nextSteps: ['Negotiation', 'On Hold', 'Void']
+                      },
+                      {
+                        status: 'Negotiation',
+                        description: 'Discussing terms and pricing with customer',
+                        nextSteps: ['Closed', 'On Hold', 'Void']
+                      },
+                      {
+                        status: 'Closed',
+                        description: 'Sale completed successfully',
+                        nextSteps: []
+                      }
+                    ].map((step, index) => (
+                      <div key={step.status} className="relative flex items-start">
+                        <div className="absolute left-8 -ml-3">
+                          <div className="h-6 w-6 rounded-full bg-red-600 flex items-center justify-center">
+                            <div className="h-2 w-2 rounded-full bg-white"></div>
+                          </div>
+                        </div>
+                        <div className="ml-16">
+                          <h3 className="text-lg font-medium text-gray-900">{step.status}</h3>
+                          <p className="mt-1 text-sm text-gray-500">{step.description}</p>
+                          {step.nextSteps.length > 0 && (
+                            <div className="mt-2">
+                              <span className="text-xs text-gray-500">Next possible states: </span>
+                              {step.nextSteps.map((nextStep, i) => (
+                                <span key={nextStep} className="text-xs">
+                                  <span className={nextStep === 'Void' ? 'text-red-600' : nextStep === 'On Hold' ? 'text-yellow-600' : 'text-green-600'}>
+                                    {nextStep}
+                                  </span>
+                                  {i < step.nextSteps.length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Special Cases */}
+                <div className="mt-8 border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">Special Cases</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <h4 className="text-red-800 font-medium mb-2">Void</h4>
+                      <p className="text-sm text-red-600">Can occur at any stage if:</p>
+                      <ul className="mt-2 text-sm text-red-600 list-disc list-inside">
+                        <li>Customer cancels the process</li>
+                        <li>Lead becomes invalid</li>
+                        <li>No response after multiple attempts</li>
+                        <li>Customer's needs changed</li>
+                      </ul>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg">
+                      <h4 className="text-yellow-800 font-medium mb-2">On Hold</h4>
+                      <p className="text-sm text-yellow-600">Temporary status when:</p>
+                      <ul className="mt-2 text-sm text-yellow-600 list-disc list-inside">
+                        <li>Customer requests delay</li>
+                        <li>Awaiting additional information</li>
+                        <li>Internal processing delay</li>
+                        <li>Seasonal timing considerations</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI Explanations */}
+                <div className="mt-8 border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">KPI Calculations</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white border rounded-lg p-4">
+                      <h4 className="font-medium mb-2">Sales Cycle Time</h4>
+                      <p className="text-sm text-gray-600">Average time from lead creation to completion:</p>
+                      <pre className="mt-2 bg-gray-50 p-2 rounded text-xs">
+                        averageCycleTime = totalDays / completedSales
+                      </pre>
+                    </div>
+                    <div className="bg-white border rounded-lg p-4">
+                      <h4 className="font-medium mb-2">Status Duration</h4>
+                      <p className="text-sm text-gray-600">Average time spent in each status:</p>
+                      <pre className="mt-2 bg-gray-50 p-2 rounded text-xs">
+                        avgTimeInStatus = totalDaysInStatus / count
+                      </pre>
+                    </div>
+                    <div className="bg-white border rounded-lg p-4">
+                      <h4 className="font-medium mb-2">Conversion Rate</h4>
+                      <p className="text-sm text-gray-600">Percentage of leads that close successfully:</p>
+                      <pre className="mt-2 bg-gray-50 p-2 rounded text-xs">
+                        conversionRate = (closedSales / totalSales) * 100
+                      </pre>
+                    </div>
+                    <div className="bg-white border rounded-lg p-4">
+                      <h4 className="font-medium mb-2">Monthly Comparison</h4>
+                      <p className="text-sm text-gray-600">Month-over-month performance change:</p>
+                      <pre className="mt-2 bg-gray-50 p-2 rounded text-xs">
+                        change = ((current - previous) / previous) * 100
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -53,16 +53,14 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchReportData() {
       try {
-        setIsLoading(true);
-        setError(null);
-        
         const response = await fetch('/api/admin/reports-data');
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Error fetching reports data: ${errorData.error || response.statusText}`);
+          throw new Error(`Error fetching reports data: ${response.statusText}`);
         }
         
         const result = await response.json();
@@ -70,19 +68,30 @@ export default function ReportsPage() {
         if (!result.success) {
           throw new Error(`API error: ${result.error}`);
         }
-        
-        setMetrics(result.metrics);
-        setSalesByStatus(result.salesByStatus);
-        setSalesByMonth(result.salesByMonth);
+
+        if (isMounted) {
+          setMetrics(result.metrics);
+          setSalesByStatus(result.salesByStatus);
+          setSalesByMonth(result.salesByMonth);
+          setError(null);
+        }
       } catch (err) {
         console.error("Error fetching report data:", err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : "An unknown error occurred");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
     
     fetchReportData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Helper function to calculate percentage change
@@ -250,17 +259,19 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {metrics?.overall.statusTransitionTimes
-                      .reduce((acc, curr) => {
-                        const key = `${curr.from}-${curr.to}`;
-                        if (!acc[key]) {
-                          acc[key] = { ...curr, count: 1 };
-                        } else {
-                          acc[key].days += curr.days;
-                          acc[key].count += 1;
-                        }
-                        return acc;
-                      }, {} as Record<string, any>)
+                    {metrics?.overall.statusTransitionTimes && 
+                      Object.values(
+                        metrics.overall.statusTransitionTimes.reduce((acc, curr) => {
+                          const key = `${curr.from}-${curr.to}`;
+                          if (!acc[key]) {
+                            acc[key] = { ...curr, count: 1 };
+                          } else {
+                            acc[key].days += curr.days;
+                            acc[key].count += 1;
+                          }
+                          return acc;
+                        }, {} as Record<string, any>)
+                      )
                       .map((transition: any) => ({
                         ...transition,
                         averageDays: transition.days / transition.count

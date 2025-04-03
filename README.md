@@ -118,3 +118,147 @@ If you encounter any issues with the date format, check:
 - The date being submitted from the contact form
 - The format of dates in the Supabase database
 - The display formatting in the admin dashboard
+
+## Deployment Guide
+
+### 1. GitHub Setup
+1. Create a new repository on GitHub
+2. Push your code to GitHub:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin your-repo-url
+   git push -u origin main
+   ```
+
+### 2. Supabase Setup
+1. Create a new project on [Supabase](https://supabase.com)
+2. Get your project credentials from Settings > API
+3. Create the following tables using the SQL editor:
+   ```sql
+   -- Check supabase-schema.sql for complete schema
+   CREATE TABLE sales (...)
+   CREATE TABLE sales_tracking (...)
+   CREATE TABLE support_tickets (...)
+   ```
+
+### 3. Vercel Deployment
+1. Go to [Vercel](https://vercel.com)
+2. Connect your GitHub repository
+3. Configure environment variables:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   ```
+4. Deploy!
+
+## KPI Calculations and Metrics
+
+### Sales Performance Metrics
+
+1. **Total Sales**
+   - Current month's total sales count
+   - Month-over-month comparison using percentage change
+   ```typescript
+   percentageChange = ((current - previous) / previous) * 100
+   ```
+
+2. **Sales Cycle Time**
+   - Average time from lead creation to sale completion
+   - Calculated using status tracking history
+   ```typescript
+   averageCycleTime = totalDaysForCompletedSales / numberOfCompletedSales
+   ```
+
+3. **Status Duration Analysis**
+   - Average time spent in each status
+   - Calculated by tracking status changes in sales_tracking table
+   ```typescript
+   averageTimeInStatus = totalDaysInStatus / numberOfOccurrences
+   ```
+
+### Status Workflow
+
+The sales process follows this workflow:
+
+1. **Initial Contact** → **Contacted**
+   - Lead enters the system
+   - Initial outreach is made
+
+2. **Contacted** → **Meeting Scheduled**
+   - Customer responds
+   - Meeting/demo is arranged
+
+3. **Meeting Scheduled** → **Quote Sent**
+   - Demo completed
+   - Pricing proposal sent
+
+4. **Quote Sent** → **Negotiation**
+   - Customer reviews quote
+   - Price/terms discussion
+
+5. **Negotiation** → **Closed**
+   - Agreement reached
+   - Payment received
+
+Special Cases:
+- **Void**: Can occur at any stage if:
+  - Customer cancels
+  - Lead becomes invalid
+  - No response after multiple attempts
+
+- **On Hold**: Temporary status when:
+  - Customer requests delay
+  - Awaiting additional information
+  - Internal processing delay
+
+### Report Calculations
+
+1. **Monthly Trends**
+   - Groups sales by month
+   - Calculates relative percentages for visualization
+   ```typescript
+   percentage = (monthCount / maxMonthCount) * 100
+   ```
+
+2. **Status Distribution**
+   - Shows percentage of sales in each status
+   ```typescript
+   statusPercentage = (statusCount / totalSales) * 100
+   ```
+
+3. **Status Transition Analysis**
+   - Average time between status changes
+   - Grouped by From/To status pairs
+   ```typescript
+   averageTransitionTime = totalDaysForTransition / numberOfTransitions
+   ```
+
+## Environment Variables
+
+Create a `.env.local` file with:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+## Local Development
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000)
+
+## Database Migration Guide
+
+[Previous migration instructions remain here...]
