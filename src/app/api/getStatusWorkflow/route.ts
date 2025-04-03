@@ -4,8 +4,11 @@ import { supabase } from '@/lib/supabase';
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // Cache for 1 hour by default
 
+type Status = 'pending' | 'contacted' | 'interested' | 'reserved booking' | 'sent invoice' | 'payment received' | 'booked' | 'completed inspection' | 'completed' | 'aftersales' | 'refunded' | 'not available' | 'void';
+type StatusWorkflow = Record<Status, Status[]>;
+
 // Define the default workflow in case database fails
-const DEFAULT_STATUS_WORKFLOW = {
+const DEFAULT_STATUS_WORKFLOW: StatusWorkflow = {
   // Initial status
   "pending": ["contacted", "not available"],
   
@@ -55,7 +58,7 @@ export async function GET(request: NextRequest) {
       .from('status_workflow')
       .select('*');
     
-    let statusWorkflow = DEFAULT_STATUS_WORKFLOW;
+    let statusWorkflow: StatusWorkflow = DEFAULT_STATUS_WORKFLOW;
     
     if (error) {
       console.error('Error fetching status workflow from Supabase:', error);
@@ -63,21 +66,29 @@ export async function GET(request: NextRequest) {
     } else if (workflowData && workflowData.length > 0) {
       // Convert Supabase workflow data to the expected format
       try {
-        statusWorkflow = {};
+        const tempWorkflow: Partial<StatusWorkflow> = {};
         
         for (const item of workflowData) {
           if (item.current_status && item.next_statuses) {
-            statusWorkflow[item.current_status] = Array.isArray(item.next_statuses) 
+            const currentStatus = item.current_status as Status;
+            const nextStatuses = Array.isArray(item.next_statuses) 
               ? item.next_statuses 
               : JSON.parse(item.next_statuses);
+            tempWorkflow[currentStatus] = nextStatuses as Status[];
           }
+        }
+        
+        // Only assign if all required statuses are present
+        if (Object.keys(tempWorkflow).length === Object.keys(DEFAULT_STATUS_WORKFLOW).length) {
+          statusWorkflow = tempWorkflow as StatusWorkflow;
+        } else {
+          console.log('Incomplete workflow data from Supabase, using default workflow');
         }
         
         console.log('Successfully loaded status workflow from Supabase');
       } catch (parseError) {
         console.error('Error parsing status workflow:', parseError);
         console.log('Using default status workflow due to parsing error');
-        statusWorkflow = DEFAULT_STATUS_WORKFLOW;
       }
     } else {
       console.log('No workflow data found in Supabase, using default workflow');

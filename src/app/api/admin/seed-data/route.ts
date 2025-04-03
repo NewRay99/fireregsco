@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from 'uuid';
 
+// Type definitions
+type Status = 'pending' | 'contacted' | 'interested' | 'qualified' | 'converted' | 'closed' | 'not available' | 'void';
+type StatusWorkflow = {
+  [K in Status]: Status[];
+};
+
+interface SeedOptions {
+  includeVoidedSales: boolean;
+  includeSeasonalTrends: boolean;
+  includeDelayedBookings: boolean;
+}
+
 // Initialize Supabase admin client with service role key
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -9,13 +21,13 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 // Sample data
 const propertyTypes = ['Residential', 'Commercial', 'Industrial', 'Multi-family'];
-const statuses = ['pending', 'contacted', 'interested', 'qualified', 'converted', 'closed', 'not available', 'void'];
+const statuses: Status[] = ['pending', 'contacted', 'interested', 'qualified', 'converted', 'closed', 'not available', 'void'];
 const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah', 'Robert', 'Lisa', 'William', 'Emma', 'James', 'Olivia', 'Benjamin', 'Sophia', 'Daniel', 'Ava', 'Matthew', 'Isabella', 'Joseph', 'Mia'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis', 'Miller', 'Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin', 'Thompson', 'Garcia', 'Martinez', 'Robinson'];
 const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com', 'icloud.com', 'protonmail.com', 'mail.com'];
 
 // Status workflow mapping
-const statusWorkflow = {
+const statusWorkflow: StatusWorkflow = {
   'pending': ['contacted', 'not available', 'void'],
   'contacted': ['interested', 'not available', 'void'],
   'interested': ['qualified', 'not available', 'void'],
@@ -27,7 +39,7 @@ const statusWorkflow = {
 };
 
 // Notes for different statuses
-const statusNotes = {
+const statusNotes: Record<Status, string[]> = {
   'pending': [
     'New lead received through website',
     'Customer inquired about our services',
@@ -180,13 +192,13 @@ function getRandomDoorCount() {
 }
 
 // Generate a realistic sales cycle with proper status progression
-function generateSalesCycle(options: any) {
+function generateSalesCycle(options: SeedOptions) {
   const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
   const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
   
   // Determine if this will be a completed, in-progress, or lost sale
   const saleOutcome = Math.random();
-  let finalStatus;
+  let finalStatus: Status;
   
   if (options.includeVoidedSales && saleOutcome < 0.3) {
     // 30% chance of lost/voided sale if that option is enabled
@@ -196,7 +208,7 @@ function generateSalesCycle(options: any) {
     finalStatus = 'closed';
   } else {
     // 30% chance of in-progress sale
-    const inProgressStatuses = ['pending', 'contacted', 'interested', 'qualified', 'converted'];
+    const inProgressStatuses: Status[] = ['pending', 'contacted', 'interested', 'qualified', 'converted'];
     finalStatus = inProgressStatuses[Math.floor(Math.random() * inProgressStatuses.length)];
   }
   
@@ -222,7 +234,7 @@ function generateSalesCycle(options: any) {
   
   // Generate tracking history
   const trackingEntries = [];
-  let currentStatus = 'pending'; // Always start with pending
+  let currentStatus: Status = 'pending'; // Always start with pending
   let currentDate = new Date(createdAt);
   
   // Add the initial pending status
@@ -236,10 +248,10 @@ function generateSalesCycle(options: any) {
   });
   
   // Generate the status progression path to reach the final status
-  const statusPath = ['pending'];
+  const statusPath: Status[] = ['pending'];
   while (currentStatus !== finalStatus) {
-    const possibleNextStatuses = statusWorkflow[currentStatus];
-    let nextStatus;
+    const possibleNextStatuses: Status[] = statusWorkflow[currentStatus];
+    let nextStatus: Status;
     
     if (finalStatus === 'void' || finalStatus === 'not available') {
       // If we're heading to a negative outcome, choose the path that leads there
@@ -247,16 +259,15 @@ function generateSalesCycle(options: any) {
         nextStatus = finalStatus;
       } else {
         // Otherwise progress normally but will eventually lead to negative outcome
-        const progressStatuses = possibleNextStatuses.filter(s => s !== 'void' && s !== 'not available');
+        const progressStatuses = possibleNextStatuses.filter((s: Status) => s !== 'void' && s !== 'not available');
         nextStatus = progressStatuses[Math.floor(Math.random() * progressStatuses.length)];
       }
     } else {
-      // For positive outcomes, avoid negative statuses
-      const progressStatuses = possibleNextStatuses.filter(s => s !== 'void' && s !== 'not available');
-      if (progressStatuses.length === 0 || currentStatus === finalStatus) {
-        break;
-      }
-      nextStatus = progressStatuses[Math.floor(Math.random() * progressStatuses.length)];
+      // Progress towards the final status through the normal path
+      nextStatus = possibleNextStatuses.find((s: Status) => 
+        s !== 'void' && s !== 'not available' && 
+        statusPath.indexOf(s) === -1
+      ) || finalStatus;
     }
     
     statusPath.push(nextStatus);
@@ -342,7 +353,7 @@ export async function POST(req: NextRequest) {
       const trackingData = [];
       
       for (let i = 0; i < count; i++) {
-        const { sale, trackingEntries } = generateSalesCycle(options);
+        const { sale, trackingEntries } = generateSalesCycle(options as SeedOptions);
         salesData.push(sale);
         trackingData.push(...trackingEntries);
       }

@@ -121,7 +121,7 @@ export default function SupportTicketsManagement() {
   };
 
   // Update the fetchTicketDetails function
-  const fetchTicketDetails = async (id) => {
+  const fetchTicketDetails = async (id: string) => {
     try {
       setIsLoadingDetails(true);
       
@@ -150,7 +150,7 @@ export default function SupportTicketsManagement() {
   };
 
   // Update the updateTicketStatus function
-  const updateTicketStatus = async (id, newStatus) => {
+  const updateTicketStatus = async (id: string, newStatus: string) => {
     try {
       setIsUpdating(true);
       
@@ -179,10 +179,10 @@ export default function SupportTicketsManagement() {
       }
       
       // Update the selected ticket
-      setSelectedTicket(prev => ({
+      setSelectedTicket(prev => prev ? {
         ...prev,
         status: newStatus
-      }));
+      } : null);
       
       // Show success message
       alert(`Status updated to ${newStatus}`);
@@ -197,8 +197,8 @@ export default function SupportTicketsManagement() {
   // Update the addResponse function
   const addResponse = async () => {
     try {
-      if (!responseText.trim()) {
-        alert("Please enter a response message");
+      if (!responseText.trim() || !selectedTicket) {
+        alert('Please enter a response message');
         return;
       }
       

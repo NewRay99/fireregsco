@@ -5,9 +5,40 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { formatSaleFromSupabase } from '@/lib/supabase';
 
+interface SupabaseSale {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  property_type: string;
+  door_count: number;
+  message?: string;
+  status: string;
+  preferred_date?: string;
+  created_at: string;
+  updated_at: string;
+  notes?: string;
+}
+
+interface DashboardStats {
+  total: number;
+  pending: number;
+  contacted: number;
+  qualified: number;
+  converted: number;
+  closed: number;
+}
+
+interface DashboardResponse {
+  success: boolean;
+  error?: string;
+  recentSales: SupabaseSale[];
+  stats: DashboardStats;
+}
+
 export default function AdminDashboard() {
-  const [recentSales, setRecentSales] = useState([]);
-  const [salesStats, setSalesStats] = useState({
+  const [recentSales, setRecentSales] = useState<ReturnType<typeof formatSaleFromSupabase>[]>([]);
+  const [salesStats, setSalesStats] = useState<DashboardStats>({
     total: 0,
     pending: 0,
     contacted: 0,
@@ -16,7 +47,7 @@ export default function AdminDashboard() {
     closed: 0
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -32,14 +63,14 @@ export default function AdminDashboard() {
           throw new Error(`Error fetching dashboard data: ${errorData.error || response.statusText}`);
         }
         
-        const result = await response.json();
+        const result = await response.json() as DashboardResponse;
         
         if (!result.success) {
           throw new Error(`API error: ${result.error}`);
         }
         
         // Format the sales data
-        const formattedSales = result.recentSales.map(sale => formatSaleFromSupabase(sale));
+        const formattedSales = result.recentSales.map((sale: SupabaseSale) => formatSaleFromSupabase(sale));
         setRecentSales(formattedSales);
         
         // Set the stats

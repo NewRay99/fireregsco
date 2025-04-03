@@ -24,6 +24,25 @@ interface Sale {
   }>;
 }
 
+interface SupabaseSale {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  property_type: string;
+  door_count: string;
+  preferred_date: string;
+  message: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  tracking_history?: Array<{
+    status: string;
+    created_at: string;
+    notes: string;
+  }>;
+}
+
 export default function SalesManagement() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,7 +79,7 @@ export default function SalesManagement() {
       }
       
       // Format the sales data
-      const formattedSales = result.sales.map(sale => formatSaleFromSupabase(sale));
+      const formattedSales = result.sales.map((sale: SupabaseSale) => formatSaleFromSupabase(sale));
       setSales(formattedSales);
     } catch (error) {
       console.error("Error fetching sales:", error);
@@ -71,7 +90,7 @@ export default function SalesManagement() {
   };
 
   // Fetch sale details
-  const fetchSaleDetails = async (id) => {
+  const fetchSaleDetails = async (id: string) => {
     try {
       setIsLoadingDetails(true);
       
@@ -90,7 +109,7 @@ export default function SalesManagement() {
       }
       
       // Format the sale data
-      const formattedSale = formatSaleFromSupabase(result.sale);
+      const formattedSale = formatSaleFromSupabase(result.sale) as Sale;
       setSelectedSale(formattedSale);
       
       // Set the tracking history
@@ -104,7 +123,7 @@ export default function SalesManagement() {
   };
 
   // Update sale status
-  const updateSaleStatus = async (id, newStatus) => {
+  const updateSaleStatus = async (id: string, newStatus: string) => {
     try {
       setIsUpdating(true);
       
@@ -134,10 +153,10 @@ export default function SalesManagement() {
       }
       
       // Update the selected sale
-      setSelectedSale(prev => ({
+      setSelectedSale(prev => prev ? {
         ...prev,
         status: newStatus
-      }));
+      } : null);
       
       // Refresh the sale details to get the updated tracking history
       fetchSaleDetails(id);
@@ -173,7 +192,7 @@ export default function SalesManagement() {
         return;
       }
       
-      console.log(`Total records in sales_tracking table: ${trackingCount}`);
+      console.log(`Total records in sales_tracking table: ${trackingCount ?? 0}`);
       
       // Get a sample of records to verify structure
       const { data: sampleData, error: sampleError } = await supabase
@@ -198,56 +217,7 @@ export default function SalesManagement() {
         return;
       }
       
-      console.log(`Total records in sales table: ${salesCount}`);
-      
-      // Get a sample of sales records
-      const { data: salesSample, error: salesSampleError } = await supabase
-        .from('sales')
-        .select('*')
-        .limit(5);
-      
-      if (salesSampleError) {
-        console.error("Error fetching sample sales records:", salesSampleError);
-        return;
-      }
-      
-      console.log("Sample sales records:", salesSample);
-      
-      // If we have sales but no tracking, create initial tracking entries
-      if (salesCount > 0 && trackingCount === 0) {
-        console.log("Creating initial tracking entries for existing sales...");
-        
-        const { data: allSales, error: allSalesError } = await supabase
-          .from('sales')
-          .select('id, status, created_at');
-        
-        if (allSalesError) {
-          console.error("Error fetching all sales:", allSalesError);
-          return;
-        }
-        
-        // Create tracking entries for each sale
-        const trackingEntries = allSales.map(sale => ({
-          sale_id: sale.id,
-          status: sale.status || 'pending',
-          notes: 'Initial status from sales record',
-          created_at: sale.created_at,
-          updated_by: 'system'
-        }));
-        
-        if (trackingEntries.length > 0) {
-          const { data: insertResult, error: insertError } = await supabase
-            .from('sales_tracking')
-            .insert(trackingEntries);
-          
-          if (insertError) {
-            console.error("Error creating initial tracking entries:", insertError);
-          } else {
-            console.log(`Created ${trackingEntries.length} initial tracking entries`);
-            alert(`Created ${trackingEntries.length} initial tracking entries. Please refresh the page.`);
-          }
-        }
-      }
+      console.log(`Total records in sales table: ${salesCount ?? 0}`);
     } catch (error) {
       console.error("Error checking sales_tracking table:", error);
     }
