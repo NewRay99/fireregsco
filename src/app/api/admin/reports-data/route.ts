@@ -1,6 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+interface SaleTracking {
+  id: string;
+  sale_id: string;
+  status: string;
+  notes: string;
+  created_at: string;
+  updated_by: string;
+}
+
+interface Sale {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  property_type: string;
+  door_count: number;
+  message?: string;
+  status: string;
+  preferred_date?: string;
+  created_at: string;
+  updated_at: string;
+  notes?: string;
+  sales_tracking?: SaleTracking[];
+}
+
+interface StatusDurations {
+  [key: string]: number[];
+}
+
+interface MonthlyMetrics {
+  totalSales: number;
+  completedSales: number;
+  voidedSales: number;
+  averageSalesCycle: number;
+  averageTimeInStatus: {
+    [key: string]: number;
+  };
+}
+
+interface Metrics {
+  currentMonth: MonthlyMetrics;
+  lastMonth: MonthlyMetrics;
+  overall: MonthlyMetrics & {
+    statusTransitionTimes: Array<{
+      from: string;
+      to: string;
+      days: number;
+    }>;
+  };
+}
+
 // Initialize Supabase admin client with service role key
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -41,7 +92,7 @@ export async function GET(req: NextRequest) {
     const lastMonth = getMonthRange(new Date(now.getFullYear(), now.getMonth() - 1));
 
     // Process sales metrics
-    const metrics = {
+    const metrics: Metrics = {
       currentMonth: {
         totalSales: 0,
         completedSales: 0,
@@ -67,12 +118,12 @@ export async function GET(req: NextRequest) {
     };
 
     // Process sales by status
-    const statusCounts = {};
-    const statusDurations = {};
+    const statusCounts: { [key: string]: number } = {};
+    const statusDurations: StatusDurations = {};
     let totalCompletedCycleDays = 0;
     let completedCycleCount = 0;
 
-    salesData.forEach(sale => {
+    (salesData as Sale[]).forEach(sale => {
       const createdDate = new Date(sale.created_at);
       const isCurrentMonth = createdDate >= currentMonth.start && createdDate <= currentMonth.end;
       const isLastMonth = createdDate >= lastMonth.start && createdDate <= lastMonth.end;
@@ -97,8 +148,8 @@ export async function GET(req: NextRequest) {
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
 
-        let lastStatus = null;
-        let lastDate = null;
+        let lastStatus: string | null = null;
+        let lastDate: string | null = null;
 
         tracking.forEach(entry => {
           if (lastStatus && lastDate) {
@@ -148,8 +199,8 @@ export async function GET(req: NextRequest) {
     }));
 
     // Process sales by month
-    const monthCounts = {};
-    salesData.forEach(sale => {
+    const monthCounts: { [key: string]: number } = {};
+    (salesData as Sale[]).forEach(sale => {
       const date = new Date(sale.created_at);
       const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       monthCounts[monthYear] = (monthCounts[monthYear] || 0) + 1;
