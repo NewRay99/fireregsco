@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { QuoteIcon } from "@heroicons/react/24/solid";
+import { ChatBubbleBottomCenterTextIcon } from "@heroicons/react/24/solid";
 
 interface Sale {
   id: string;
