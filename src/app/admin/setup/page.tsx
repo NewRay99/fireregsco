@@ -173,16 +173,16 @@ export default function SetupPage() {
       setIsSeeding(false);
     }
   };
-
+  
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold pb-6">Admin Setup</h1>
-        
+      
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
-            <button
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
               onClick={() => setActiveTab('connection')}
               className={`${
                 activeTab === 'connection'
@@ -204,27 +204,27 @@ export default function SetupPage() {
             </button>
             <button
               onClick={() => setActiveTab('seed')}
-              className={`${
+            className={`${
                 activeTab === 'seed'
                   ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
               Seed Data
-            </button>
-            <button
+          </button>
+          <button
               onClick={() => setActiveTab('workflow')}
-              className={`${
+            className={`${
                 activeTab === 'workflow'
                   ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
               Workflow & KPIs
-            </button>
-          </nav>
-        </div>
-        
+          </button>
+        </nav>
+      </div>
+      
         {/* Connection Status Tab */}
         {activeTab === 'connection' && (
           <div className="bg-white shadow rounded-lg p-6">
@@ -304,7 +304,7 @@ export default function SetupPage() {
               <div className="p-4 bg-red-50 text-red-800 rounded-md">
                 <h3 className="font-bold">Error</h3>
                 <p>{tableDataError}</p>
-              </div>
+                </div>
             ) : selectedTable ? (
               <div>
                 <h3 className="text-md font-medium mb-2">
@@ -396,7 +396,7 @@ export default function SetupPage() {
                   disabled={isSeeding}
                 />
               </div>
-            </div>
+                </div>
             
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -469,7 +469,7 @@ export default function SetupPage() {
           <div className="space-y-8">
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Sales Workflow</h2>
-              <div className="space-y-6">
+          <div className="space-y-6">
                 <div className="relative">
                   {/* Workflow diagram */}
                   <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200"></div>
@@ -531,9 +531,9 @@ export default function SetupPage() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-
+            </div>
+            </div>
+            
                 {/* Special Cases */}
                 <div className="mt-8 border-t pt-6">
                   <h3 className="text-lg font-medium mb-4">Special Cases</h3>
@@ -546,8 +546,8 @@ export default function SetupPage() {
                         <li>Lead becomes invalid</li>
                         <li>No response after multiple attempts</li>
                         <li>Customer&apos;s needs changed</li>
-                      </ul>
-                    </div>
+              </ul>
+            </div>
                     <div className="bg-yellow-50 p-4 rounded-lg">
                       <h4 className="text-yellow-800 font-medium mb-2">On Hold</h4>
                       <p className="text-sm text-yellow-600">Temporary status when:</p>
@@ -556,11 +556,11 @@ export default function SetupPage() {
                         <li>Awaiting additional information</li>
                         <li>Internal processing delay</li>
                         <li>Seasonal timing considerations</li>
-                      </ul>
+              </ul>
                     </div>
-                  </div>
-                </div>
-
+            </div>
+          </div>
+          
                 {/* KPI Explanations */}
                 <div className="mt-8 border-t pt-6">
                   <h3 className="text-lg font-medium mb-4">KPI Calculations</h3>
@@ -593,12 +593,12 @@ export default function SetupPage() {
                         change = ((current - previous) / previous) * 100
                       </pre>
                     </div>
-                  </div>
+              </div>
                 </div>
               </div>
-            </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
     </AdminLayout>
   );

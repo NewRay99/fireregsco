@@ -1,6 +1,8 @@
 import React, { useState, useRef } from "react";
 import { Image as ImageIcon, X } from "lucide-react";
 import Image from "next/image";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface ImageUploadProps {
   onImageChange: (file: File | null) => void;
@@ -33,7 +35,7 @@ export default function ImageUpload({ onImageChange }: ImageUploadProps) {
   return (
     <div className="flex items-center justify-center w-full">
       {imagePreview ? (
-        <div className="relative w-full h-64">
+        <Card className="relative w-full h-64 overflow-hidden">
           <Image
             src={imagePreview}
             alt="Preview"
@@ -41,27 +43,30 @@ export default function ImageUpload({ onImageChange }: ImageUploadProps) {
             objectFit="cover"
             className="rounded-lg"
           />
-          <button
-            type="button"
+          <Button
+            variant="destructive"
+            size="icon"
             onClick={removeImage}
-            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+            className="absolute top-2 right-2 rounded-full"
           >
-            <X size={20} />
-          </button>
-        </div>
+            <X className="h-4 w-4" />
+          </Button>
+        </Card>
       ) : (
-        <label
-          htmlFor="image"
-          className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
-        >
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <ImageIcon className="w-10 h-10 mb-3 text-gray-400" />
-            <p className="mb-2 text-sm text-gray-500">
-              <span className="font-semibold">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-gray-500">PNG, JPG or GIF (MAX. 800x400px)</p>
-          </div>
-        </label>
+        <Card className="w-full h-64 border-2 border-dashed border-muted hover:bg-accent/50 transition-colors cursor-pointer">
+          <label
+            htmlFor="image"
+            className="flex flex-col items-center justify-center w-full h-full cursor-pointer"
+          >
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <ImageIcon className="w-10 h-10 mb-3 text-muted-foreground" />
+              <p className="mb-2 text-sm text-muted-foreground">
+                <span className="font-semibold">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-muted-foreground">PNG, JPG or GIF (MAX. 800x400px)</p>
+            </div>
+          </label>
+        </Card>
       )}
       <input
         type="file"

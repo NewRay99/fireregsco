@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { getNextStatuses } from "@/lib/supabase";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface StatusDropdownProps {
   currentStatus: string;
@@ -21,7 +30,6 @@ export default function StatusDropdown({
     async function loadNextStatuses() {
       try {
         setIsLoading(true);
-        // Always include "contacted" and "void" as they can occur at any time
         const nextStatuses = await getNextStatuses(currentStatus);
         const allStatuses = Array.isArray(nextStatuses) 
           ? [...nextStatuses, "contacted", "void"].filter((v, i, a) => a.indexOf(v) === i)
@@ -30,7 +38,6 @@ export default function StatusDropdown({
         setAvailableStatuses(allStatuses);
       } catch (error) {
         console.error("Error loading next statuses:", error);
-        // Fallback to a basic set of statuses
         setAvailableStatuses(["pending", "contacted", "interested", "not available", "void"]);
       } finally {
         setIsLoading(false);
@@ -42,50 +49,67 @@ export default function StatusDropdown({
 
   // Status color mapping
   const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: "bg-yellow-100 text-yellow-800",
-      contacted: "bg-blue-100 text-blue-800",
-      interested: "bg-purple-100 text-purple-800",
-      "reserved booking": "bg-indigo-100 text-indigo-800",
-      "sent invoice": "bg-pink-100 text-pink-800",
-      "payment received": "bg-green-100 text-green-800",
-      booked: "bg-teal-100 text-teal-800",
-      "completed inspection": "bg-cyan-100 text-cyan-800",
-      completed: "bg-emerald-100 text-emerald-800",
-      aftersales: "bg-lime-100 text-lime-800",
-      refunded: "bg-orange-100 text-orange-800",
-      "not available": "bg-gray-100 text-gray-800",
-      void: "bg-red-100 text-red-800"
+    const colors: Record<string, { bg: string; text: string }> = {
+      pending: { bg: "bg-yellow-100", text: "text-yellow-800" },
+      contacted: { bg: "bg-blue-100", text: "text-blue-800" },
+      interested: { bg: "bg-purple-100", text: "text-purple-800" },
+      "reserved booking": { bg: "bg-indigo-100", text: "text-indigo-800" },
+      "sent invoice": { bg: "bg-pink-100", text: "text-pink-800" },
+      "payment received": { bg: "bg-green-100", text: "text-green-800" },
+      booked: { bg: "bg-teal-100", text: "text-teal-800" },
+      "completed inspection": { bg: "bg-cyan-100", text: "text-cyan-800" },
+      completed: { bg: "bg-emerald-100", text: "text-emerald-800" },
+      aftersales: { bg: "bg-lime-100", text: "text-lime-800" },
+      refunded: { bg: "bg-orange-100", text: "text-orange-800" },
+      "not available": { bg: "bg-gray-100", text: "text-gray-800" },
+      void: { bg: "bg-red-100", text: "text-red-800" }
     };
     
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || { bg: "bg-gray-100", text: "text-gray-800" };
   };
 
   if (isLoading) {
-    return (
-      <div className="animate-pulse h-10 bg-gray-200 rounded w-full"></div>
-    );
+    return <Skeleton className="h-10 w-full" />;
   }
 
+  const statusColor = getStatusColor(currentStatus);
+
   return (
-    <div className="relative">
-      <select
-        value={currentStatus}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className={`w-full p-2 rounded border ${
-          disabled ? "bg-gray-100" : "bg-white"
-        } ${getStatusColor(currentStatus)}`}
-      >
-        <option value={currentStatus}>{currentStatus}</option>
+    <Select
+      value={currentStatus}
+      onValueChange={onChange}
+      disabled={disabled}
+    >
+      <SelectTrigger className={cn(
+        "w-full",
+        statusColor.bg,
+        statusColor.text,
+        disabled && "opacity-50 cursor-not-allowed"
+      )}>
+        <SelectValue placeholder={currentStatus} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={currentStatus} className={cn(
+          statusColor.bg,
+          statusColor.text
+        )}>
+          {currentStatus}
+        </SelectItem>
         {availableStatuses
           .filter(status => status !== currentStatus)
-          .map(status => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-      </select>
-    </div>
+          .map(status => {
+            const color = getStatusColor(status);
+            return (
+              <SelectItem
+                key={status}
+                value={status}
+                className={cn(color.bg, color.text)}
+              >
+                {status}
+              </SelectItem>
+            );
+          })}
+      </SelectContent>
+    </Select>
   );
 } 

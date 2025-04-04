@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter, Roboto, Raleway } from "next/font/google";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,8 +32,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${roboto.variable} ${raleway.variable} scroll-smooth`}>
-      <body className="font-sans bg-light text-dark min-h-screen">
+      <body className="font-sans bg-background text-foreground min-h-screen">
         {children}
+        <Toaster />
       </body>
     </html>
   );

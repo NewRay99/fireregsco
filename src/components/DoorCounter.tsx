@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { getDoorCountRanges } from "@/lib/supabase";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type DoorCountRange = {
   id: number;
@@ -39,21 +47,37 @@ export default function DoorCounter() {
   }, []);
 
   if (isLoading) {
-    return <div>Loading door count options...</div>;
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="w-full">
+            <CardHeader>
+              <Skeleton className="h-8 w-24 mx-auto" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-4 w-32 mx-auto" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
       {doorCountRanges.map((range) => (
-        <div
-          key={range.id}
-          className="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow"
-        >
-          <h3 className="text-2xl font-bold text-red-700 mb-2">
-            {range.range_name}
-          </h3>
-          <p className="text-gray-600">Fire Doors</p>
-        </div>
+        <Card key={range.id} className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-red-700 text-center">
+              {range.range_name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription className="text-center">
+              Fire Doors
+            </CardDescription>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );
