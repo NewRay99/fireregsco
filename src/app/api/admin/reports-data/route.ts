@@ -89,8 +89,37 @@ function getMonthRange(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
+// Add CORS headers to the response
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+}
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders() });
+}
+
 export async function GET(req: NextRequest) {
   try {
+    // Check if required environment variables are set
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing required environment variables");
+      return NextResponse.json(
+        { success: false, error: "Server configuration error" },
+        { 
+          status: 500,
+          headers: {
+            ...corsHeaders(),
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
     // Fetch all sales data with tracking history
     const { data: salesData, error: salesError } = await supabaseAdmin
       .from('sales')
@@ -101,7 +130,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ 
         success: false, 
         error: salesError.message 
-      }, { status: 500 });
+      }, { 
+        status: 500,
+        headers: {
+          ...corsHeaders(),
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    if (!salesData) {
+      console.error("No sales data returned from database");
+      return NextResponse.json({ 
+        success: false, 
+        error: "No data available" 
+      }, { 
+        status: 404,
+        headers: {
+          ...corsHeaders(),
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
     const now = new Date();
@@ -361,12 +410,26 @@ export async function GET(req: NextRequest) {
       metrics,
       salesByStatus,
       salesByMonth
+    }, {
+      headers: {
+        ...corsHeaders(),
+        'Content-Type': 'application/json'
+      }
     });
   } catch (error) {
     console.error("Error in reports-data API:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch reports data" },
-      { status: 500 }
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to fetch reports data"
+      },
+      { 
+        status: 500,
+        headers: {
+          ...corsHeaders(),
+          'Content-Type': 'application/json'
+        }
+      }
     );
   }
 } 

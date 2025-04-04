@@ -23,6 +23,15 @@ import {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1'];
 
+// Add type definitions for status transition times
+interface StatusTransition {
+  from: string;
+  to: string;
+  days: number;
+  month?: string;
+}
+
+// Update the metrics interface
 interface Metrics {
   currentMonth: {
     totalSales: number;
@@ -44,11 +53,7 @@ interface Metrics {
     voidedSales: number;
     averageSalesCycle: number;
     averageTimeInStatus: Record<string, number>;
-    statusTransitionTimes: Array<{
-      from: string;
-      to: string;
-      days: number;
-    }>;
+    statusTransitionTimes: StatusTransition[];
     doorCountDistribution: any[];
     propertyTypeDistribution: any[];
   };
@@ -129,6 +134,25 @@ async function getReportsData(): Promise<ReportsDataResponse> {
   }
 }
 
+// Add a type for the PieChart label props
+interface PieChartLabelProps {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  percent?: number;
+  index?: number;
+  status?: string;
+  count?: number;
+}
+
+// Helper function to safely format percentages
+const formatPercent = (percent?: number): string => {
+  if (percent === undefined) return '0%';
+  return `${(percent * 100).toFixed(1)}%`;
+};
+
 export default function ReportsPage() {
   const [data, setData] = useState<ReportsDataResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,7 +177,7 @@ export default function ReportsPage() {
     fetchData();
   }, []);
 
-  const renderStatusDistribution = (salesByStatus: SalesByStatus[]) => (
+  const renderStatusDistribution = (salesByStatus: any[]) => (
     <div className="flex flex-col items-center bg-white p-6 rounded-lg shadow">
       <h2 className="text-xl font-bold mb-4">Status Distribution</h2>
       <div className="w-full h-96">
@@ -161,19 +185,22 @@ export default function ReportsPage() {
           <PieChart>
             <Pie
               data={salesByStatus}
+              dataKey="count"
+              nameKey="status"
               cx="50%"
               cy="50%"
-              labelLine={true}
-              outerRadius={120}
+              outerRadius={150}
               fill="#8884d8"
-              dataKey="count"
-              label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+              label={(props: PieChartLabelProps) => {
+                const { status, count, percent } = props;
+                return `${status}: ${count} (${formatPercent(percent)})`;
+              }}
             >
               {salesByStatus.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => [`${value} records`, 'Count']} />
+            <Tooltip formatter={(value: number) => [value, 'Count']} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
@@ -236,13 +263,14 @@ export default function ReportsPage() {
   const renderTimeToClose = () => {
     // Group time-to-close data by month
     const monthlyData = data?.metrics.overall.statusTransitionTimes
-      .filter(t => (t.from === 'pending' && (t.to === 'payment received' || t.to === 'void')))
-      .reduce((acc: any, curr) => {
+      ?.filter((t: StatusTransition) => (t.from === 'pending' && (t.to === 'payment received' || t.to === 'void')))
+      .reduce((acc: Record<string, any>, curr: StatusTransition) => {
+        // Check if month exists and handle it safely
         if (!curr.month) return acc;
         
         if (!acc[curr.month]) {
           acc[curr.month] = {
-            month: new Date(curr.month + '-01').toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+            month: new Date(`${curr.month}-01`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
             timeToPayment: [],
             timeToVoid: []
           };
@@ -255,7 +283,7 @@ export default function ReportsPage() {
         }
         
         return acc;
-      }, {});
+      }, {}) || {};
 
     // Calculate averages for each month
     const timeToCloseData = Object.values(monthlyData).map((month: any) => ({
@@ -277,7 +305,12 @@ export default function ReportsPage() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis label={{ value: 'Days', angle: -90, position: 'insideLeft' }} />
-              <Tooltip formatter={(value) => [`${value.toFixed(1)} days`, '']} />
+              <Tooltip 
+                formatter={(value: any) => {
+                  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+                  return [`${Number(numValue).toFixed(1)} days`, ''];
+                }} 
+              />
               <Legend />
               <Bar dataKey="avgTimeToPayment" name="Time to Payment" fill="#00C49F" />
               <Bar dataKey="avgTimeToVoid" name="Time to Void" fill="#FF8042" />
@@ -340,7 +373,7 @@ export default function ReportsPage() {
     // Calculate percentages
     const total = demographicsData.reduce((sum, item) => sum + item.totalClients, 0);
     demographicsData.forEach(item => {
-      item.percentage = total > 0 ? (item.totalClients / total * 100).toFixed(1) : '0';
+      item.percentage = total > 0 ? Number((item.totalClients / total * 100).toFixed(1)) : 0;
     });
 
     return (
@@ -404,13 +437,13 @@ export default function ReportsPage() {
       totalClients: item.completed + item.voided,
       completed: item.completed,
       voided: item.voided,
-      percentage: 0
+      percentage: 0 // Will be calculated below as a number, not string
     }));
 
     // Calculate percentages
     const total = propertyData.reduce((sum, item) => sum + item.totalClients, 0);
     propertyData.forEach(item => {
-      item.percentage = total > 0 ? (item.totalClients / total * 100).toFixed(1) : '0';
+      item.percentage = total > 0 ? Number((item.totalClients / total * 100).toFixed(1)) : 0;
     });
 
     return (
