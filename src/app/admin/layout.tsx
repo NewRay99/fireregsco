@@ -107,7 +107,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     className="h-10 w-auto"
                   />
                   <span className="text-primary font-bold text-xl font-heading">
-                    Fire Regs Co
+                    FireSafetyPro
                   </span>
                 </Link>
               </div>

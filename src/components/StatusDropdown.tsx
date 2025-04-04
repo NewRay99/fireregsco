@@ -54,7 +54,7 @@ export default function StatusDropdown({
   };
 
   if (isLoading) {
-    return <Skeleton className="h-10 w-full" />;
+    return <Skeleton className="h-10 w-[200px]" />;
   }
 
   const statusColor = getStatusColor(currentStatus);
@@ -66,7 +66,7 @@ export default function StatusDropdown({
       disabled={disabled}
     >
       <SelectTrigger className={cn(
-        "w-full",
+        "w-[200px]",
         statusColor.bg,
         statusColor.text,
         disabled && "opacity-50 cursor-not-allowed"

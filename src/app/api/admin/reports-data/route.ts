@@ -38,6 +38,20 @@ interface MonthlyMetrics {
   averageTimeInStatus: {
     [key: string]: number;
   };
+  timeToPayment: number;
+  timeToVoid: number;
+}
+
+interface DoorCountDistribution {
+  range: string;
+  completed: number;
+  voided: number;
+}
+
+interface PropertyTypeDistribution {
+  type: string;
+  completed: number;
+  voided: number;
 }
 
 interface Metrics {
@@ -48,7 +62,10 @@ interface Metrics {
       from: string;
       to: string;
       days: number;
+      month?: string;
     }>;
+    doorCountDistribution: DoorCountDistribution[];
+    propertyTypeDistribution: PropertyTypeDistribution[];
   };
 }
 
@@ -91,6 +108,56 @@ export async function GET(req: NextRequest) {
     const currentMonth = getMonthRange(now);
     const lastMonth = getMonthRange(new Date(now.getFullYear(), now.getMonth() - 1));
 
+    // Initialize door count ranges
+    const doorCountRanges = [
+      { range: "20-100", min: 20, max: 100 },
+      { range: "100-200", min: 100, max: 200 },
+      { range: "200-1000", min: 200, max: 1000 },
+      { range: "1000-2000", min: 1000, max: 2000 },
+      { range: "2000+", min: 2000, max: Infinity }
+    ];
+
+    // Initialize door count distribution with direct calculation from sales data
+    const doorCountDistribution = doorCountRanges.map(range => {
+      const completedCount = (salesData as Sale[]).filter(sale => 
+        sale.status === 'payment received' && 
+        sale.door_count >= range.min && 
+        sale.door_count <= range.max
+      ).length;
+
+      const voidedCount = (salesData as Sale[]).filter(sale => 
+        sale.status === 'void' && 
+        sale.door_count >= range.min && 
+        sale.door_count <= range.max
+      ).length;
+
+      return {
+        range: range.range,
+        completed: completedCount,
+        voided: voidedCount
+      };
+    });
+
+    // Calculate property type distribution
+    const propertyTypes = Array.from(new Set((salesData as Sale[]).map(sale => sale.property_type)));
+    const propertyTypeDistribution = propertyTypes.map(type => {
+      const completedCount = (salesData as Sale[]).filter(sale => 
+        sale.status === 'payment received' && 
+        sale.property_type === type
+      ).length;
+
+      const voidedCount = (salesData as Sale[]).filter(sale => 
+        sale.status === 'void' && 
+        sale.property_type === type
+      ).length;
+
+      return {
+        type,
+        completed: completedCount,
+        voided: voidedCount
+      };
+    });
+
     // Process sales metrics
     const metrics: Metrics = {
       currentMonth: {
@@ -99,6 +166,8 @@ export async function GET(req: NextRequest) {
         voidedSales: 0,
         averageSalesCycle: 0,
         averageTimeInStatus: {},
+        timeToPayment: 0,
+        timeToVoid: 0
       },
       lastMonth: {
         totalSales: 0,
@@ -106,6 +175,8 @@ export async function GET(req: NextRequest) {
         voidedSales: 0,
         averageSalesCycle: 0,
         averageTimeInStatus: {},
+        timeToPayment: 0,
+        timeToVoid: 0
       },
       overall: {
         totalSales: salesData.length,
@@ -113,9 +184,19 @@ export async function GET(req: NextRequest) {
         voidedSales: 0,
         averageSalesCycle: 0,
         averageTimeInStatus: {},
+        timeToPayment: 0,
+        timeToVoid: 0,
         statusTransitionTimes: [],
+        doorCountDistribution,
+        propertyTypeDistribution
       }
     };
+
+    // Track time-to-payment and time-to-void metrics
+    let totalTimeToPayment = 0;
+    let totalTimeToVoid = 0;
+    let paymentCount = 0;
+    let voidCount = 0;
 
     // Process sales by status
     const statusCounts: { [key: string]: number } = {};
@@ -134,11 +215,11 @@ export async function GET(req: NextRequest) {
       // Track metrics by month
       if (isCurrentMonth) {
         metrics.currentMonth.totalSales++;
-        if (sale.status === 'closed') metrics.currentMonth.completedSales++;
+        if (sale.status === 'payment received') metrics.currentMonth.completedSales++;
         if (sale.status === 'void') metrics.currentMonth.voidedSales++;
       } else if (isLastMonth) {
         metrics.lastMonth.totalSales++;
-        if (sale.status === 'closed') metrics.lastMonth.completedSales++;
+        if (sale.status === 'payment received') metrics.lastMonth.completedSales++;
         if (sale.status === 'void') metrics.lastMonth.voidedSales++;
       }
 
@@ -177,6 +258,44 @@ export async function GET(req: NextRequest) {
           totalCompletedCycleDays += cycleDays;
           completedCycleCount++;
         }
+
+        // Find first 'pending' status
+        const pendingEntry = tracking.find(t => t.status === 'pending');
+        if (pendingEntry) {
+          // Find payment received or void status
+          const paymentEntry = tracking.find(t => t.status === 'payment received');
+          const voidEntry = tracking.find(t => t.status === 'void');
+
+          if (paymentEntry) {
+            const timeToPayment = daysBetween(pendingEntry.created_at, paymentEntry.created_at);
+            totalTimeToPayment += timeToPayment;
+            paymentCount++;
+
+            // Add to monthly metrics
+            const month = new Date(pendingEntry.created_at).toISOString().slice(0, 7);
+            metrics.overall.statusTransitionTimes.push({
+              from: 'pending',
+              to: 'payment received',
+              days: timeToPayment,
+              month
+            });
+          }
+
+          if (voidEntry) {
+            const timeToVoid = daysBetween(pendingEntry.created_at, voidEntry.created_at);
+            totalTimeToVoid += timeToVoid;
+            voidCount++;
+
+            // Add to monthly metrics
+            const month = new Date(pendingEntry.created_at).toISOString().slice(0, 7);
+            metrics.overall.statusTransitionTimes.push({
+              from: 'pending',
+              to: 'void',
+              days: timeToVoid,
+              month
+            });
+          }
+        }
       }
     });
 
@@ -191,6 +310,10 @@ export async function GET(req: NextRequest) {
         durations.reduce((sum, duration) => sum + duration, 0) / durations.length;
     });
 
+    // Calculate average time to payment and void
+    metrics.overall.timeToPayment = paymentCount > 0 ? totalTimeToPayment / paymentCount : 0;
+    metrics.overall.timeToVoid = voidCount > 0 ? totalTimeToVoid / voidCount : 0;
+
     // Format sales by status for display
     const salesByStatus = Object.entries(statusCounts).map(([status, count]) => ({
       status,
@@ -199,18 +322,37 @@ export async function GET(req: NextRequest) {
     }));
 
     // Process sales by month
-    const monthCounts: { [key: string]: number } = {};
+    const monthCounts: { [key: string]: { total: number; [key: string]: number } } = {};
     (salesData as Sale[]).forEach(sale => {
       const date = new Date(sale.created_at);
       const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      monthCounts[monthYear] = (monthCounts[monthYear] || 0) + 1;
+      
+      // Initialize month if it doesn't exist
+      if (!monthCounts[monthYear]) {
+        monthCounts[monthYear] = { total: 0 };
+      }
+      
+      // Increment total count
+      monthCounts[monthYear].total++;
+      
+      // Increment status-specific count
+      if (!monthCounts[monthYear][sale.status]) {
+        monthCounts[monthYear][sale.status] = 0;
+      }
+      monthCounts[monthYear][sale.status]++;
     });
 
     const salesByMonth = Object.entries(monthCounts)
-      .map(([monthYear, count]) => ({
+      .map(([monthYear, counts]) => ({
         monthYear,
-        count,
-        label: new Date(`${monthYear}-01`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+        count: counts.total,
+        label: new Date(`${monthYear}-01`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+        ...Object.entries(counts)
+          .filter(([key]) => key !== 'total')
+          .reduce((acc, [status, count]) => ({
+            ...acc,
+            [`count_${status}`]: count
+          }), {})
       }))
       .sort((a, b) => a.monthYear.localeCompare(b.monthYear));
 

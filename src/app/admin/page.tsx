@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { formatSaleFromSupabase } from '@/lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
+import { AdminIcons } from '@/lib/admin-icons';
+import AdminPageTitle from '@/components/AdminPageTitle';
 
 interface SupabaseSale {
   id: string;
@@ -89,7 +91,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-6">Admin Dashboard</h1>
+      <AdminPageTitle 
+        icon={AdminIcons.Dashboard}
+        title="Dashboard"
+      />
       
       {/* Loading State */}
       {isLoading && (

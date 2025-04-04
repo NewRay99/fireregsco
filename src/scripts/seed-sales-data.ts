@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Sample data
-const propertyTypes = ['Residential', 'Commercial', 'Industrial', 'Multi-family'];
+const propertyTypes = ['HMO', 'Hotel', 'Commercial', 'Public Building', 'Others'];
 const statuses = ['pending', 'contacted', 'interested', 'sent invoice', 'payment received', 'closed', 'not available'];
 const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah', 'Robert', 'Lisa', 'William', 'Emma'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis', 'Miller', 'Wilson', 'Moore', 'Taylor'];
@@ -118,9 +118,33 @@ function getRandomNote(status: string) {
   return statusNotes[Math.floor(Math.random() * statusNotes.length)];
 }
 
-// Generate a random number of doors
+// Generate a random number of doors based on predefined ranges
 function getRandomDoorCount() {
-  return Math.floor(Math.random() * 10) + 1;
+  const doorCountRanges = [
+    { range_name: "20-100", min_count: 20, max_count: 100, weight: 0.4 },
+    { range_name: "100-200", min_count: 100, max_count: 200, weight: 0.3 },
+    { range_name: "200-1000", min_count: 200, max_count: 1000, weight: 0.15 },
+    { range_name: "1000-2000", min_count: 1000, max_count: 2000, weight: 0.1 },
+    { range_name: "2000+", min_count: 2000, max_count: 5000, weight: 0.05 }
+  ];
+
+  const random = Math.random();
+  let cumulativeWeight = 0;
+  
+  for (const range of doorCountRanges) {
+    cumulativeWeight += range.weight;
+    if (random < cumulativeWeight) {
+      // For the last range (2000+), generate between min and max
+      if (!range.max_count) {
+        return Math.floor(Math.random() * (5000 - range.min_count)) + range.min_count;
+      }
+      // For other ranges, generate a random number within the range
+      return Math.floor(Math.random() * (range.max_count - range.min_count)) + range.min_count;
+    }
+  }
+  
+  // Fallback to first range if something goes wrong
+  return Math.floor(Math.random() * (100 - 20)) + 20;
 }
 
 // Generate a sale record

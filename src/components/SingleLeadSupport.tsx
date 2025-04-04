@@ -5,6 +5,15 @@ import { supabase } from "@/lib/supabase";
 import StatusDropdown from "./StatusDropdown";
 import { formatSaleFromSupabase } from "@/lib/supabase";
 import { ChevronDownIcon, ChevronUpIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { QuoteIcon } from "@heroicons/react/24/solid";
 
 interface Sale {
   id: string;
@@ -193,167 +202,227 @@ export default function SingleLeadSupport() {
   }
 
   return (
-    <div className="p-4">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-4 space-y-6"
+    >
       {/* Search Section */}
-      <div className="mb-6">
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search by email or name..."
-            className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-        </div>
-
-        {/* Search Results Dropdown */}
-        {searchResults.length > 0 && (
-          <div className="absolute z-10 w-full max-w-3xl mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-            {searchResults.map((result) => (
-              <button
-                key={result.id}
-                onClick={() => selectLead(result)}
-                className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
-              >
-                <div className="font-medium">{result.name}</div>
-                <div className="text-sm text-gray-600">{result.email}</div>
-              </button>
-            ))}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="relative">
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search by email or name..."
+              className="pl-10"
+            />
+            <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
-        )}
-      </div>
+
+          <AnimatePresence>
+            {searchResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute z-10 w-full max-w-3xl mt-1"
+              >
+                <Card>
+                  <ScrollArea className="h-[300px]">
+                    {searchResults.map((result) => (
+                      <motion.button
+                        key={result.id}
+                        onClick={() => selectLead(result)}
+                        className="w-full px-4 py-3 text-left hover:bg-accent focus:outline-none focus:bg-accent transition-colors"
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                      >
+                        <div className="font-medium">{result.name}</div>
+                        <div className="text-sm text-muted-foreground">{result.email}</div>
+                      </motion.button>
+                    ))}
+                  </ScrollArea>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </CardContent>
+      </Card>
 
       {error ? (
-        <div className="p-4 bg-red-50 text-red-800 rounded-md">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="p-4 bg-destructive/10 text-destructive rounded-md"
+        >
           <h3 className="font-bold">Error loading lead</h3>
           <p>{error}</p>
-          <button 
+          <Button 
+            variant="destructive"
             onClick={fetchLeads}
-            className="mt-2 px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800"
+            className="mt-2"
           >
             Try Again
-          </button>
-        </div>
+          </Button>
+        </motion.div>
       ) : !sale ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No lead selected. Use the search above to find a lead.</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-8"
+        >
+          <p className="text-muted-foreground">No lead selected. Use the search above to find a lead.</p>
+        </motion.div>
       ) : (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-5">
-            {/* Lead Header */}
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="text-2xl font-bold">{sale.name}</h2>
-                <p className="text-gray-600">{sale.email}</p>
-                <p className="text-gray-600">{sale.phone}</p>
-              </div>
-              <StatusDropdown 
-                currentStatus={sale.status} 
-                onStatusChange={handleStatusChange}
-                statuses={workflowStatuses}
-              />
-            </div>
-
-            {/* Lead Details */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Property Type</h3>
-                <p className="mt-1">{sale.propertyType}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Door Count</h3>
-                <p className="mt-1">{sale.doorCount}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Preferred Date</h3>
-                <p className="mt-1">
-                  {sale.preferredDate ? new Date(sale.preferredDate).toLocaleDateString() : "Not specified"}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Created At</h3>
-                <p className="mt-1">{new Date(sale.timestamp).toLocaleDateString()}</p>
-              </div>
-            </div>
-
-            {/* Message */}
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-500">Message</h3>
-              <p className="mt-1 text-gray-700">{sale.message}</p>
-            </div>
-
-            {/* Notes History */}
-            <div className="border-t pt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Notes History</h3>
-                <button
-                  onClick={() => setExpandedNotes(!expandedNotes)}
-                  className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                >
-                  {expandedNotes ? (
-                    <ChevronUpIcon className="h-5 w-5" />
-                  ) : (
-                    <ChevronDownIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-              
-              {sale.trackingHistory && sale.trackingHistory.length > 0 ? (
-                <div className="space-y-4">
-                  {expandedNotes && sale.trackingHistory.map((entry, index) => (
-                    <div key={index} className="p-4 bg-[#f5f5dc] rounded-lg">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium">{entry.status}</span>
-                        <span className="text-gray-500">
-                          {new Date(entry.timestamp).toLocaleString()}
-                        </span>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card>
+            <CardContent className="p-6">
+              {/* Lead Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">{sale.name}</h2>
+                  <HoverCard>
+                    <HoverCardTrigger>
+                      <p className="text-muted-foreground cursor-pointer">{sale.email}</p>
+                    </HoverCardTrigger>
+                    <HoverCardContent>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Contact Information</p>
+                        <p className="text-sm text-muted-foreground">{sale.phone}</p>
                       </div>
-                      {entry.notes && (
-                        <p className="text-gray-700">{entry.notes}</p>
-                      )}
-                    </div>
-                  ))}
+                    </HoverCardContent>
+                  </HoverCard>
                 </div>
-              ) : (
-                <p className="text-gray-500">No notes available</p>
-              )}
-            </div>
-          </div>
-        </div>
+                <Badge variant={sale.status === 'completed' ? 'default' : 'secondary'}>
+                  <StatusDropdown 
+                    currentStatus={sale.status} 
+                    onStatusChange={handleStatusChange}
+                    statuses={workflowStatuses}
+                  />
+                </Badge>
+              </div>
+
+              {/* Lead Details */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <Card className="p-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground mb-1">Property Type</CardTitle>
+                  <p>{sale.propertyType}</p>
+                </Card>
+                <Card className="p-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground mb-1">Door Count</CardTitle>
+                  <p>{sale.doorCount}</p>
+                </Card>
+                <Card className="p-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground mb-1">Preferred Date</CardTitle>
+                  <p>
+                    {sale.preferredDate ? new Date(sale.preferredDate).toLocaleDateString() : "Not specified"}
+                  </p>
+                </Card>
+                <Card className="p-4">
+                  <CardTitle className="text-sm font-medium text-muted-foreground mb-1">Created At</CardTitle>
+                  <p>{new Date(sale.timestamp).toLocaleDateString()}</p>
+                </Card>
+              </div>
+
+              {/* Message */}
+              <Card className="mb-6 p-4">
+                <CardTitle className="text-sm font-medium text-muted-foreground mb-2">Message</CardTitle>
+                <p className="text-sm">{sale.message}</p>
+              </Card>
+
+              {/* Notes History */}
+              <Card className="mt-6">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-lg font-medium">Notes History</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExpandedNotes(!expandedNotes)}
+                    className="h-8 w-8 p-0"
+                  >
+                    {expandedNotes ? (
+                      <ChevronUpIcon className="h-4 w-4" />
+                    ) : (
+                      <ChevronDownIcon className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <AnimatePresence>
+                    {sale.trackingHistory && sale.trackingHistory.length > 0 ? (
+                      <motion.div
+                        initial={false}
+                        animate={{ height: expandedNotes ? 'auto' : 0 }}
+                        exit={{ height: 0 }}
+                        className="space-y-4 overflow-hidden"
+                      >
+                        {expandedNotes && sale.trackingHistory.map((entry, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="p-4 bg-muted rounded-lg"
+                          >
+                            <div className="flex justify-between text-sm mb-2">
+                              <Badge variant="outline">{entry.status}</Badge>
+                              <span className="text-muted-foreground">
+                                {new Date(entry.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+                            {entry.notes && (
+                              <p className="text-sm">{entry.notes}</p>
+                            )}
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    ) : (
+                      <p className="text-muted-foreground">No notes available</p>
+                    )}
+                  </AnimatePresence>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {/* Status Note Modal */}
-      {showNoteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full">
-            <h3 className="text-lg font-medium mb-4">Add Note for Status Change</h3>
+      <Dialog open={showNoteModal} onOpenChange={setShowNoteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Note for Status Change</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
             <textarea
-              className="w-full p-2 border rounded"
-              rows={4}
+              className="w-full min-h-[100px] p-2 border rounded-md"
               value={statusNote}
               onChange={(e) => setStatusNote(e.target.value)}
               placeholder="Enter notes about this status change..."
             />
-            <div className="mt-4 flex justify-end space-x-3">
-              <button
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
                 onClick={() => setShowNoteModal(false)}
               >
                 Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              </Button>
+              <Button
                 onClick={handleNoteSubmit}
                 disabled={isUpdating}
               >
                 {isUpdating ? "Updating..." : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
   );
 } 

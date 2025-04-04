@@ -11,6 +11,15 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
   FunnelChart, Funnel, LabelList
 } from 'recharts';
+import { AdminIcons } from '@/lib/admin-icons';
+import AdminPageTitle from '@/components/AdminPageTitle';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1'];
 
@@ -40,6 +49,8 @@ interface Metrics {
       to: string;
       days: number;
     }>;
+    doorCountDistribution: any[];
+    propertyTypeDistribution: any[];
   };
 }
 
@@ -123,6 +134,7 @@ export default function ReportsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   useEffect(() => {
     async function fetchData() {
@@ -202,25 +214,73 @@ export default function ReportsPage() {
     );
   };
 
+  const renderDoorCountDistribution = (doorCountDistribution: any[]) => (
+    <div className="flex flex-col items-center bg-white p-6 rounded-lg shadow">
+      <h2 className="text-xl font-bold mb-4">Door Count Distribution</h2>
+      <div className="w-full h-96">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={doorCountDistribution}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="range" />
+            <YAxis label={{ value: 'Number of Sales', angle: -90, position: 'insideLeft' }} />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="completed" name="Completed Sales" fill="#00C49F" stackId="a" />
+            <Bar dataKey="voided" name="Voided Sales" fill="#FF8042" stackId="a" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+
   const renderTimeToClose = () => {
-    const timeToCloseData = data?.metrics.overall.statusTransitionTimes.map(t => ({
-      from: t.from,
-      to: t.to,
-      days: t.days
-    })) || [];
+    // Group time-to-close data by month
+    const monthlyData = data?.metrics.overall.statusTransitionTimes
+      .filter(t => (t.from === 'pending' && (t.to === 'payment received' || t.to === 'void')))
+      .reduce((acc: any, curr) => {
+        if (!curr.month) return acc;
+        
+        if (!acc[curr.month]) {
+          acc[curr.month] = {
+            month: new Date(curr.month + '-01').toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+            timeToPayment: [],
+            timeToVoid: []
+          };
+        }
+        
+        if (curr.to === 'payment received') {
+          acc[curr.month].timeToPayment.push(curr.days);
+        } else if (curr.to === 'void') {
+          acc[curr.month].timeToVoid.push(curr.days);
+        }
+        
+        return acc;
+      }, {});
+
+    // Calculate averages for each month
+    const timeToCloseData = Object.values(monthlyData).map((month: any) => ({
+      month: month.month,
+      avgTimeToPayment: month.timeToPayment.length > 0 
+        ? month.timeToPayment.reduce((a: number, b: number) => a + b, 0) / month.timeToPayment.length 
+        : 0,
+      avgTimeToVoid: month.timeToVoid.length > 0 
+        ? month.timeToVoid.reduce((a: number, b: number) => a + b, 0) / month.timeToVoid.length 
+        : 0
+    }));
 
     return (
       <div className="flex flex-col items-center bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-bold mb-4">Time to Close by Status Transition</h2>
+        <h2 className="text-xl font-bold mb-4">Average Time to Close by Month</h2>
         <div className="w-full h-96">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={timeToCloseData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="from" />
+              <XAxis dataKey="month" />
               <YAxis label={{ value: 'Days', angle: -90, position: 'insideLeft' }} />
-              <Tooltip />
+              <Tooltip formatter={(value) => [`${value.toFixed(1)} days`, '']} />
               <Legend />
-              <Bar dataKey="days" fill="#8884d8" name="Days to Transition" />
+              <Bar dataKey="avgTimeToPayment" name="Time to Payment" fill="#00C49F" />
+              <Bar dataKey="avgTimeToVoid" name="Time to Void" fill="#FF8042" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -230,7 +290,25 @@ export default function ReportsPage() {
 
   const renderMonthlySales = (salesByMonth: SalesByMonth[]) => (
     <div className="flex flex-col items-center bg-white p-6 rounded-lg shadow">
-      <h2 className="text-xl font-bold mb-4">Monthly Sales Trend</h2>
+      <div className="w-full flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">Monthly Sales Trend</h2>
+        <Select
+          value={selectedStatus}
+          onValueChange={(value) => setSelectedStatus(value)}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {data?.salesByStatus.map((status) => (
+              <SelectItem key={status.status} value={status.status}>
+                {status.status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div className="w-full h-96">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={salesByMonth}>
@@ -239,17 +317,180 @@ export default function ReportsPage() {
             <YAxis label={{ value: 'Sales Count', angle: -90, position: 'insideLeft' }} />
             <Tooltip />
             <Legend />
-            <Line type="monotone" dataKey="count" stroke="#8884d8" name="Sales" />
+            <Line 
+              type="monotone" 
+              dataKey={selectedStatus === 'all' ? 'count' : `count_${selectedStatus}`}
+              stroke="#8884d8" 
+              name={selectedStatus === 'all' ? 'All Sales' : `${selectedStatus} Sales`}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 
+  const renderClientDemographics = (doorCountDistribution: any[]) => {
+    // Calculate total clients for each range
+    const demographicsData = doorCountDistribution.map(range => ({
+      range: range.range,
+      totalClients: range.completed + range.voided,
+      percentage: 0 // Will be calculated below
+    }));
+
+    // Calculate percentages
+    const total = demographicsData.reduce((sum, item) => sum + item.totalClients, 0);
+    demographicsData.forEach(item => {
+      item.percentage = total > 0 ? (item.totalClients / total * 100).toFixed(1) : '0';
+    });
+
+    return (
+      <div className="flex flex-col items-center bg-white p-6 rounded-lg shadow">
+        <h2 className="text-xl font-bold mb-4">Client Size Distribution</h2>
+        <div className="w-full h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={demographicsData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="range" 
+                label={{ value: 'Door Count Range', position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis 
+                yAxisId="left"
+                label={{ value: 'Number of Clients', angle: -90, position: 'insideLeft' }}
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                label={{ value: 'Percentage', angle: 90, position: 'insideRight' }}
+                tickFormatter={(value) => `${value}%`}
+              />
+              <Tooltip 
+                formatter={(value, name) => [
+                  name === 'percentage' ? `${value}%` : value,
+                  name === 'percentage' ? 'Percentage' : 'Total Clients'
+                ]}
+              />
+              <Legend />
+              <Bar 
+                yAxisId="left"
+                dataKey="totalClients" 
+                fill="#8884d8" 
+                name="Total Clients"
+              >
+                <LabelList 
+                  dataKey="totalClients" 
+                  position="top"
+                />
+              </Bar>
+              <Line 
+                yAxisId="right"
+                type="monotone" 
+                dataKey="percentage" 
+                stroke="#82ca9d" 
+                name="Percentage"
+                dot={{ fill: '#82ca9d' }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPropertyTypeDistribution = (propertyTypeDistribution: any[]) => {
+    // Calculate total for each property type
+    const propertyData = propertyTypeDistribution.map(item => ({
+      type: item.type || 'Unknown',
+      totalClients: item.completed + item.voided,
+      completed: item.completed,
+      voided: item.voided,
+      percentage: 0
+    }));
+
+    // Calculate percentages
+    const total = propertyData.reduce((sum, item) => sum + item.totalClients, 0);
+    propertyData.forEach(item => {
+      item.percentage = total > 0 ? (item.totalClients / total * 100).toFixed(1) : '0';
+    });
+
+    return (
+      <div className="flex flex-col items-center bg-white p-6 rounded-lg shadow">
+        <h2 className="text-xl font-bold mb-4">Property Type Distribution</h2>
+        <div className="w-full h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={propertyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="type" 
+                label={{ value: 'Property Type', position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis 
+                yAxisId="left"
+                label={{ value: 'Number of Properties', angle: -90, position: 'insideLeft' }}
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                label={{ value: 'Percentage', angle: 90, position: 'insideRight' }}
+                tickFormatter={(value) => `${value}%`}
+              />
+              <Tooltip 
+                formatter={(value, name) => [
+                  name === 'percentage' ? `${value}%` : value,
+                  name === 'percentage' ? 'Percentage' : 
+                  name === 'completed' ? 'Completed' : 
+                  name === 'voided' ? 'Voided' : 'Total'
+                ]}
+              />
+              <Legend />
+              <Bar 
+                yAxisId="left"
+                dataKey="completed" 
+                fill="#00C49F" 
+                name="Completed"
+                stackId="a"
+              >
+                <LabelList 
+                  dataKey="completed" 
+                  position="inside"
+                  fill="#fff"
+                />
+              </Bar>
+              <Bar 
+                yAxisId="left"
+                dataKey="voided" 
+                fill="#FF8042" 
+                name="Voided"
+                stackId="a"
+              >
+                <LabelList 
+                  dataKey="voided" 
+                  position="inside"
+                  fill="#fff"
+                />
+              </Bar>
+              <Line 
+                yAxisId="right"
+                type="monotone" 
+                dataKey="percentage" 
+                stroke="#8884d8" 
+                name="Percentage"
+                dot={{ fill: '#8884d8' }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold pb-6">Reports</h1>
+        <AdminPageTitle 
+          icon={AdminIcons.Reports}
+          title="Reports"
+        />
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
         </div>
@@ -260,7 +501,10 @@ export default function ReportsPage() {
   if (error || !data) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold pb-6">Reports</h1>
+        <AdminPageTitle 
+          icon={AdminIcons.Reports}
+          title="Reports"
+        />
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
           {error || 'No data available'}
         </div>
@@ -272,12 +516,15 @@ export default function ReportsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold pb-6">Reports</h1>
+      <AdminPageTitle 
+        icon={AdminIcons.Reports}
+        title="Reports"
+      />
       
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
-          {['overview', 'funnel', 'trends', 'timing'].map((tab) => (
+          {['overview', 'funnel', 'trends', 'timing', 'demographics'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -529,6 +776,20 @@ export default function ReportsPage() {
       {activeTab === 'timing' && (
         <div className="space-y-6">
           {renderTimeToClose()}
+          {renderDoorCountDistribution(metrics.overall.doorCountDistribution)}
+        </div>
+      )}
+
+      {/* Demographics Tab */}
+      {activeTab === 'demographics' && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold mb-4">Client Demographics</h2>
+          
+          {/* Door Count Distribution */}
+          {renderDoorCountDistribution(metrics.overall.doorCountDistribution)}
+          
+          {/* Property Type Distribution */}
+          {renderPropertyTypeDistribution(metrics.overall.propertyTypeDistribution)}
         </div>
       )}
     </div>
