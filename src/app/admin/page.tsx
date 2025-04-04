@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { formatSaleFromSupabase } from '@/lib/supabase';
+import { formatDistanceToNow } from 'date-fns';
 
 interface SupabaseSale {
   id: string;
@@ -24,8 +25,8 @@ interface DashboardStats {
   total: number;
   pending: number;
   contacted: number;
-  qualified: number;
-  converted: number;
+  sent_invoice: number;
+  payment_received: number;
   closed: number;
 }
 
@@ -42,8 +43,8 @@ export default function AdminDashboard() {
     total: 0,
     pending: 0,
     contacted: 0,
-    qualified: 0,
-    converted: 0,
+    sent_invoice: 0,
+    payment_received: 0,
     closed: 0
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -87,21 +88,29 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold pb-6">Admin Dashboard</h1>
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold mb-6">Admin Dashboard</h1>
       
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-700 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard data...</p>
         </div>
-      ) : error ? (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          {error}
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
+          <p>{error}</p>
         </div>
-      ) : (
-        <>
-          {/* Sales Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      )}
+
+      {/* Dashboard Content */}
+      {!isLoading && !error && (
+        <div className="space-y-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-medium mb-4">Sales Overview</h2>
               <div className="space-y-3">
@@ -119,11 +128,11 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Qualified:</span>
-                  <span className="font-semibold">{salesStats.qualified}</span>
+                  <span className="font-semibold">{salesStats.sent_invoice}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Converted:</span>
-                  <span className="font-semibold">{salesStats.converted}</span>
+                  <span className="font-semibold">{salesStats.payment_received}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Closed:</span>
@@ -168,16 +177,10 @@ export default function AdminDashboard() {
             </div>
           </div>
           
-          {/* Recent Sales */}
-          <div className="bg-white shadow rounded-lg p-6 mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium">Recent Sales</h2>
-              <Link href="/admin/sales" className="text-sm text-red-700 hover:text-red-800">
-                View all →
-              </Link>
-            </div>
-            
-            {recentSales.length > 0 ? (
+          {/* Recent Sales Table */}
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="p-6">
+              <h2 className="text-lg font-medium mb-4">Recent Sales</h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -212,14 +215,14 @@ export default function AdminDashboard() {
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                             ${sale.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                               sale.status === 'contacted' ? 'bg-blue-100 text-blue-800' : 
-                              sale.status === 'qualified' ? 'bg-green-100 text-green-800' : 
-                              sale.status === 'converted' ? 'bg-purple-100 text-purple-800' : 
+                              sale.status === 'sent invoice' ? 'bg-green-100 text-green-800' : 
+                              sale.status === 'payment received' ? 'bg-purple-100 text-purple-800' : 
                               'bg-gray-100 text-gray-800'}`}>
                             {sale.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(sale.timestamp).toLocaleDateString()}
+                          {formatDistanceToNow(new Date(sale.timestamp))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <Link href={`/admin/sales?id=${sale.id}`} className="text-red-700 hover:text-red-800">
@@ -231,11 +234,9 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <p className="text-gray-500">No recent sales found.</p>
-            )}
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

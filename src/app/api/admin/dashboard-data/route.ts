@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
       total: allSales.length,
       pending: allSales.filter(sale => sale.status === 'pending').length,
       contacted: allSales.filter(sale => sale.status === 'contacted').length,
-      qualified: allSales.filter(sale => sale.status === 'qualified').length,
-      converted: allSales.filter(sale => sale.status === 'converted').length,
+      sent_invoice: allSales.filter(sale => sale.status === 'sent invoice').length,
+      payment_received: allSales.filter(sale => sale.status === 'payment received').length,
       closed: allSales.filter(sale => sale.status === 'closed').length
     };
     

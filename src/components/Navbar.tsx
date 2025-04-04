@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import {
   NavigationMenu,
@@ -74,12 +75,18 @@ export default function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold">
-              <span className={isScrolled ? "text-red-700" : "text-white"}>
-                Fire
+            <Link href="/" className="flex items-center space-x-2">
+              <Image
+                src="/images/fireregsco image.png"
+                alt="Fire Regs Co Logo"
+                width={40}
+                height={40}
+                className="h-10 w-auto"
+                priority
+              />
+              <span className={`text-xl font-bold ${isScrolled ? "text-red-700" : "text-white"}`}>
+                FireSafetyPro
               </span>
-              <span className={isScrolled ? "text-foreground" : "text-white"}>Safety</span>
-              <span className={isScrolled ? "text-red-700" : "text-white"}>Pro</span>
             </Link>
           </div>
 

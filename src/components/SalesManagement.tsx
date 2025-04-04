@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import StatusDropdown from "./StatusDropdown";
 import { formatSaleFromSupabase } from "@/lib/supabase";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 
 interface Sale {
   id: string;
@@ -53,11 +54,86 @@ export default function SalesManagement() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
-  const [trackingHistory, setTrackingHistory] = useState<Array<{
+  const [trackingHistoryMap, setTrackingHistoryMap] = useState<Map<string, Array<{
     status: string;
     timestamp: string;
     notes: string;
-  }>>([]);
+  }>>>(new Map());
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['pending']);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [workflowStatuses, setWorkflowStatuses] = useState<string[]>([]);
+  const [mainStatuses] = useState(['pending', 'contacted', 'sent invoice']);
+
+  // Fetch workflow statuses
+  const fetchWorkflowStatuses = async () => {
+    try {
+      console.log("Starting workflow status fetch...");
+      
+      const { data, error } = await supabase
+        .from('status_workflow')
+        .select('current_status, next_statuses')
+        .order('created_at');
+
+      if (error) {
+        console.error("Supabase error fetching statuses:", error);
+        throw error;
+      }
+
+      if (!data || !Array.isArray(data)) {
+        console.error("Invalid data format received:", data);
+        throw new Error("Invalid data format received from status_workflow table");
+      }
+
+      console.log("Raw status workflow data:", data);
+      
+      const statuses = data.map(item => item.current_status);
+      console.log("Processed workflow statuses:", statuses);
+      
+      if (statuses.length === 0) {
+        console.warn("No statuses found in workflow table, using defaults");
+        throw new Error("No statuses found in workflow table");
+      }
+
+      setWorkflowStatuses(statuses);
+      
+      // Also log the next_statuses for debugging
+      data.forEach(item => {
+        console.log(`Next statuses for ${item.current_status}:`, item.next_statuses);
+      });
+
+    } catch (error) {
+      console.error("Error in fetchWorkflowStatuses:", error);
+      // Set default statuses if fetch fails
+      const defaultStatuses = [
+        'pending',
+        'contacted',
+        'interested',
+        'reserved booking',
+        'sent invoice',
+        'payment received',
+        'booked',
+        'completed inspection',
+        'completed',
+        'aftersales',
+        'refunded',
+        'not available',
+        'void'
+      ];
+      console.log("Setting default statuses:", defaultStatuses);
+      setWorkflowStatuses(defaultStatuses);
+    }
+  };
+
+  // Call fetchWorkflowStatuses immediately and then set up interval to refresh
+  useEffect(() => {
+    fetchWorkflowStatuses();
+    
+    // Refresh statuses every 5 minutes
+    const interval = setInterval(fetchWorkflowStatuses, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch sales data from Supabase
   const fetchSales = async () => {
@@ -73,14 +149,26 @@ export default function SalesManagement() {
       }
       
       const result = await response.json();
+      console.log("API Response:", result); // Debug log
       
       if (!result.success) {
         throw new Error(`API error: ${result.error}`);
       }
       
-      // Format the sales data
+      // Format the sales data and set up tracking history map
       const formattedSales = result.sales.map((sale: SupabaseSale) => formatSaleFromSupabase(sale));
+      console.log("Formatted Sales:", formattedSales); // Debug log
       setSales(formattedSales);
+
+      // Set up tracking history map from the sales data
+      const newTrackingMap = new Map();
+      formattedSales.forEach((sale: Sale) => {
+        if (sale.trackingHistory && sale.trackingHistory.length > 0) {
+          newTrackingMap.set(sale.id, sale.trackingHistory);
+        }
+      });
+      console.log("Initial tracking map:", Object.fromEntries(newTrackingMap)); // Debug log
+      setTrackingHistoryMap(newTrackingMap);
     } catch (error) {
       console.error("Error fetching sales:", error);
       alert(`Error fetching sales: ${error instanceof Error ? error.message : String(error)}`);
@@ -89,38 +177,47 @@ export default function SalesManagement() {
     }
   };
 
-  // Fetch sale details
+  // Fetch sale details is now only used when updating status
   const fetchSaleDetails = async (id: string) => {
     try {
       setIsLoadingDetails(true);
+      console.log(`Fetching details for sale ${id}`); // Debug log
       
-      // Use the API route instead of direct Supabase client
       const response = await fetch(`/api/admin/sales-management?id=${id}`);
-      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Error fetching sale details: ${errorData.error || response.statusText}`);
+        throw new Error('Failed to fetch sale details');
       }
-      
+
       const result = await response.json();
-      
       if (!result.success) {
-        throw new Error(`API error: ${result.error}`);
+        throw new Error(result.error || 'Failed to fetch sale details');
       }
-      
-      // Format the sale data
-      const formattedSale = formatSaleFromSupabase(result.sale) as Sale;
-      setSelectedSale(formattedSale);
-      
-      // Set the tracking history
-      setTrackingHistory(result.trackingHistory || []);
+
+      const sale = formatSaleFromSupabase(result.sale);
+      console.log(`Updated sale details:`, sale); // Debug log
+
+      // Update the tracking history map with the new data
+      setTrackingHistoryMap(prev => {
+        const newMap = new Map(prev);
+        if (sale.trackingHistory && sale.trackingHistory.length > 0) {
+          newMap.set(id, sale.trackingHistory);
+        }
+        return newMap;
+      });
+
+      // Update the sale in the sales list
+      setSales(prev => prev.map(s => s.id === id ? sale : s));
     } catch (error) {
       console.error("Error fetching sale details:", error);
-      alert(`Error fetching sale details: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoadingDetails(false);
     }
   };
+
+  // Add this debug effect
+  useEffect(() => {
+    console.log("Current tracking history map:", Object.fromEntries(trackingHistoryMap));
+  }, [trackingHistoryMap]);
 
   // Update sale status
   const updateSaleStatus = async (id: string, newStatus: string) => {
@@ -321,6 +418,15 @@ export default function SalesManagement() {
     checkSalesTrackingTable();
   }, []);
 
+  // Calculate status counts
+  useEffect(() => {
+    const counts: Record<string, number> = {};
+    sales.forEach(sale => {
+      counts[sale.status] = (counts[sale.status] || 0) + 1;
+    });
+    setStatusCounts(counts);
+  }, [sales]);
+
   // Handle status change
   const handleStatusChange = async (saleId: string, newStatus: string) => {
     setSelectedSaleId(saleId);
@@ -355,6 +461,22 @@ export default function SalesManagement() {
     }
   };
 
+  // Toggle notes expansion - no need to fetch details anymore since we have them
+  const toggleNotesExpansion = (saleId: string) => {
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(saleId)) {
+        newSet.delete(saleId);
+      } else {
+        newSet.add(saleId);
+      }
+      return newSet;
+    });
+  };
+
+  // Filter sales by selected statuses
+  const filteredSales = sales.filter(sale => selectedStatuses.includes(sale.status));
+
   if (isLoading) {
     return (
       <div className="p-4">
@@ -386,138 +508,220 @@ export default function SalesManagement() {
 
   return (
     <div className="p-4">
-      {sales.length === 0 ? (
-        <div className="bg-gray-50 p-6 text-center rounded-md">
-          <p className="text-gray-500">No sales records found.</p>
+      {/* Add debug info at the top */}
+      <div className="mb-4 p-4 bg-gray-100 rounded">
+        <h3 className="font-bold">Debug Info:</h3>
+        <p>Number of sales: {sales.length}</p>
+        <p>Number of sales with tracking: {trackingHistoryMap.size}</p>
+        <p>Selected statuses: {selectedStatuses.join(', ')}</p>
+      </div>
+      {/* Status Filter */}
+      <div className="mb-6 bg-white shadow rounded-lg p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium">Filter by Status</h2>
+          <span className="text-sm text-gray-600">
+            {filteredSales.length} records found
+          </span>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {sales.map((sale) => (
-            <div key={sale.id} className="bg-white p-6 rounded-lg shadow-md">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <h3 className="font-bold text-lg">{sale.name}</h3>
-                  <p className="text-gray-600">{sale.email}</p>
-                  {sale.phone && <p className="text-gray-600">{sale.phone}</p>}
+        <div className="flex flex-wrap gap-2">
+          {mainStatuses.map(status => (
+            <button
+              key={status}
+              onClick={() => setSelectedStatuses(prev => 
+                prev.includes(status) 
+                  ? prev.filter(s => s !== status)
+                  : [...prev, status]
+              )}
+              className={`px-4 py-2 rounded-full text-sm font-medium relative ${
+                selectedStatuses.includes(status)
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              {status}
+              {statusCounts[status] > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {statusCounts[status]}
+                </span>
+              )}
+            </button>
+          ))}
+          <select
+            className="px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700"
+            onChange={(e) => {
+              const status = e.target.value;
+              if (status && !selectedStatuses.includes(status)) {
+                setSelectedStatuses(prev => [...prev, status]);
+              }
+            }}
+            value=""
+          >
+            <option value="">Other Statuses...</option>
+            {workflowStatuses
+              .filter(status => !mainStatuses.includes(status))
+              .map(status => (
+                <option key={status} value={status}>
+                  {status} ({statusCounts[status] || 0})
+                </option>
+            ))}
+          </select>
+        </div>
+        {selectedStatuses.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {selectedStatuses.map(status => (
+              <span
+                key={status}
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100"
+              >
+                {status}
+                <span className="ml-1 text-xs text-gray-500">
+                  ({statusCounts[status] || 0})
+                </span>
+                <button
+                  onClick={() => setSelectedStatuses(prev => prev.filter(s => s !== status))}
+                  className="ml-2 text-gray-500 hover:text-gray-700"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
                 </div>
-                
-                <div>
-                  <p><span className="font-medium">Property Type:</span> {sale.propertyType}</p>
-                  <p><span className="font-medium">Door Count:</span> {sale.doorCount}</p>
-                  {sale.preferredDate && (
-                    <p><span className="font-medium">Preferred Date:</span> {sale.preferredDate}</p>
                   )}
                 </div>
                 
+      {/* Sales List */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+            </div>
+          ) : error ? (
+            <div className="text-red-600">{error}</div>
+          ) : filteredSales.length === 0 ? (
+            <div className="text-gray-500 text-center py-12">No sales found for the selected statuses.</div>
+          ) : (
+            <div className="space-y-6">
+              {filteredSales.map((sale) => (
+                <div key={sale.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
                 <div>
-                  <div className="mb-2">
-                    <span className="font-medium">Status:</span>
+                      <h3 className="text-lg font-medium">{sale.name}</h3>
+                      <p className="text-sm text-gray-500">{sale.email}</p>
+                    </div>
                     <StatusDropdown 
                       currentStatus={sale.status} 
-                      onChange={(newStatus) => handleStatusChange(sale.id, newStatus)} 
-                      disabled={isUpdating}
+                      onStatusChange={(newStatus) => handleStatusChange(sale.id, newStatus)}
+                      statuses={workflowStatuses}
                     />
                   </div>
-                  <p className="text-sm text-gray-500">
-                    Created: {new Date(sale.timestamp).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Updated: {new Date(sale.updatedAt).toLocaleString()}
-                  </p>
+                  <div className="mt-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-gray-700">Notes</h4>
+                        {(trackingHistoryMap.get(sale.id)?.length ?? 0) > 0 && (
+                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {trackingHistoryMap.get(sale.id)?.length ?? 0}
+                          </span>
+                        )}
                 </div>
+                      <button
+                        onClick={() => toggleNotesExpansion(sale.id)}
+                        className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                      >
+                        {(trackingHistoryMap.get(sale.id)?.length ?? 0) > 0 && (
+                          <span className="text-sm text-gray-500">
+                            {new Date(trackingHistoryMap.get(sale.id)![0].timestamp).toLocaleDateString()}
+                          </span>
+                        )}
+                        {expandedNotes.has(sale.id) ? (
+                          <ChevronUpIcon className="h-5 w-5" />
+                        ) : (
+                          <ChevronDownIcon className="h-5 w-5" />
+                        )}
+                      </button>
               </div>
-              
-              {sale.message && (
-                <div className="mt-4 p-3 bg-gray-50 rounded">
-                  <p className="font-medium">Message:</p>
-                  <p className="whitespace-pre-wrap">{sale.message}</p>
-                </div>
-              )}
-              
-              {sale.trackingHistory.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-medium mb-2">Status History:</h4>
-                  <div className="max-h-40 overflow-y-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left">Date</th>
-                          <th className="px-4 py-2 text-left">Status</th>
-                          <th className="px-4 py-2 text-left">Notes</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {sale.trackingHistory.map((history, index) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2">
-                              {new Date(history.timestamp).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-2">
-                              <span className={`px-2 py-1 rounded text-xs ${
-                                history.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                history.status === 'contacted' ? 'bg-blue-100 text-blue-800' :
-                                history.status === 'interested' ? 'bg-purple-100 text-purple-800' :
-                                history.status === 'reserved booking' ? 'bg-indigo-100 text-indigo-800' :
-                                history.status === 'sent invoice' ? 'bg-pink-100 text-pink-800' :
-                                history.status === 'payment received' ? 'bg-green-100 text-green-800' :
-                                history.status === 'booked' ? 'bg-teal-100 text-teal-800' :
-                                history.status === 'completed inspection' ? 'bg-cyan-100 text-cyan-800' :
-                                history.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
-                                history.status === 'aftersales' ? 'bg-lime-100 text-lime-800' :
-                                history.status === 'void' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {history.status}
+                    <div className={`mt-2 ${expandedNotes.has(sale.id) ? '' : ''}`}>
+                      {(trackingHistoryMap.get(sale.id)?.length ?? 0) > 0 && (
+                        <div className="space-y-3">
+                          {/* First note always visible */}
+                          <div className="p-3 bg-[#f5f5dc] rounded-lg">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">{trackingHistoryMap.get(sale.id)![0].status}</span>
+                              <span className="text-gray-500">
+                                {new Date(trackingHistoryMap.get(sale.id)![0].timestamp).toLocaleString()}
                               </span>
-                            </td>
-                            <td className="px-4 py-2">{history.notes}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                            </div>
+                            {trackingHistoryMap.get(sale.id)![0].notes && (
+                              <p className="mt-1 text-sm text-gray-700">{trackingHistoryMap.get(sale.id)![0].notes}</p>
+                            )}
+                          </div>
+                          
+                          {/* Other notes expandable */}
+                          {expandedNotes.has(sale.id) && trackingHistoryMap.get(sale.id)!.slice(1).map((entry, index) => (
+                            <div key={index} className="p-3 bg-[#f5f5dc] rounded-lg">
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium">{entry.status}</span>
+                                <span className="text-gray-500">
+                                  {new Date(entry.timestamp).toLocaleString()}
+                                </span>
+                              </div>
+                              {entry.notes && (
+                                <p className="mt-1 text-sm text-gray-700">{entry.notes}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Property Type:</span> {sale.propertyType}
+                    </div>
+                    <div>
+                      <span className="font-medium">Door Count:</span> {sale.doorCount}
+                    </div>
+                    <div>
+                      <span className="font-medium">Phone:</span> {sale.phone}
+                    </div>
+                    <div>
+                      <span className="font-medium">Preferred Date:</span>{" "}
+                      {sale.preferredDate ? new Date(sale.preferredDate).toLocaleDateString() : "Not specified"}
+                    </div>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
+      </div>
       
       {/* Status Note Modal */}
       {showNoteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">Add Note for Status Change</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full">
+            <h3 className="text-lg font-medium mb-4">Add Note for Status Change</h3>
             <textarea
+              className="w-full p-2 border rounded"
+              rows={4}
               value={statusNote}
               onChange={(e) => setStatusNote(e.target.value)}
-              className="w-full p-2 border rounded mb-4"
-              rows={4}
-              placeholder="Add notes about this status change (optional)"
-            ></textarea>
-            <div className="flex justify-end space-x-2">
+              placeholder="Enter notes about this status change..."
+            />
+            <div className="mt-4 flex justify-end space-x-3">
               <button
-                onClick={() => {
-                  setShowNoteModal(false);
-                  setStatusNote("");
-                  // Reset the temporary status
-                  const originalSales = sales.map(sale => {
-                    const { tempNewStatus, ...rest } = sale as any;
-                    return rest;
-                  });
-                  setSales(originalSales);
-                }}
-                className="px-4 py-2 border rounded text-gray-700 hover:bg-gray-100"
-                disabled={isUpdating}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                onClick={() => setShowNoteModal(false)}
               >
                 Cancel
               </button>
               <button
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 onClick={handleNoteSubmit}
-                className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800"
                 disabled={isUpdating}
               >
-                {isUpdating ? "Saving..." : "Save"}
+                {isUpdating ? "Updating..." : "Save"}
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import React, { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 interface AdminLayoutProps {
@@ -97,8 +98,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link href="/" className="text-primary font-bold text-xl font-heading">
-                  Lead Manager
+                <Link href="/" className="flex items-center space-x-2">
+                  <Image
+                    src="/images/fireregsco image.png"
+                    alt="Fire Regs Co Logo"
+                    width={40}
+                    height={40}
+                    className="h-10 w-auto"
+                  />
+                  <span className="text-primary font-bold text-xl font-heading">
+                    Fire Regs Co
+                  </span>
                 </Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">

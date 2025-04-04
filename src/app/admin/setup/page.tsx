@@ -32,6 +32,10 @@ export default function SetupPage() {
     includeDelayedBookings: true
   });
   
+  // Add clearData state
+  const [isClearingData, setIsClearingData] = useState(false);
+  const [clearResult, setClearResult] = useState<{success: boolean; message: string} | null>(null);
+  
   useEffect(() => {
     async function checkSupabaseConnection() {
       try {
@@ -171,6 +175,54 @@ export default function SetupPage() {
       });
     } finally {
       setIsSeeding(false);
+    }
+  };
+  
+  // Add clearData function
+  const handleClearData = async () => {
+    if (!confirm('Are you sure you want to clear all sales data? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setIsClearingData(true);
+      setClearResult(null);
+      
+      const response = await fetch('/api/admin/seed-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'sales',
+          count: 0,
+          clearExisting: true
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to clear database');
+      }
+      
+      setClearResult({
+        success: true,
+        message: 'Successfully cleared all sales data!'
+      });
+      
+      // Refresh table data if we're looking at sales or sales_tracking
+      if (selectedTable === 'sales' || selectedTable === 'sales_tracking') {
+        await fetchTableData(selectedTable);
+      }
+    } catch (error) {
+      console.error('Error clearing database:', error);
+      setClearResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'An unknown error occurred'
+      });
+    } finally {
+      setIsClearingData(false);
     }
   };
   
@@ -359,108 +411,133 @@ export default function SetupPage() {
         
         {/* Seed Data Tab */}
         {activeTab === 'seed' && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium mb-4">Database Seed</h2>
-            <p className="text-gray-600 mb-4">
-              Generate sample data for testing and development purposes.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Seed Type
-                </label>
-                <select
-                  value={seedType}
-                  onChange={(e) => setSeedType(e.target.value)}
-                  className="w-full border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500"
+          <div className="space-y-6">
+            {/* Clear Data Section */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-medium mb-4">Clear Data</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Clear all sales and tracking data from the database. This action cannot be undone.
+              </p>
+              
+              {clearResult && (
+                <div className={`mb-4 p-4 rounded-md ${
+                  clearResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                }`}>
+                  {clearResult.message}
+                </div>
+              )}
+              
+              <button
+                onClick={handleClearData}
+                disabled={isClearingData}
+                className="inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+              >
+                {isClearingData ? 'Clearing...' : 'Clear All Data'}
+              </button>
+            </div>
+
+            {/* Existing Seed Controls */}
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-medium mb-4">Seed Data</h2>
+              
+              {seedResult && (
+                <div className={`mb-4 p-4 rounded-md ${
+                  seedResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                }`}>
+                  {seedResult.message}
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Number of Records
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={seedCount}
+                    onChange={(e) => setSeedCount(Number(e.target.value))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Data Type
+                  </label>
+                  <select
+                    value={seedType}
+                    onChange={(e) => setSeedType(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                  >
+                    <option value="sales">Sales</option>
+                    <option value="both">Sales & Support</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Options
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={seedOptions.includeSeasonalTrends}
+                        onChange={(e) => setSeedOptions(prev => ({
+                          ...prev,
+                          includeSeasonalTrends: e.target.checked
+                        }))}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-600">
+                        Include Seasonal Trends
+                      </span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={seedOptions.includeVoidedSales}
+                        onChange={(e) => setSeedOptions(prev => ({
+                          ...prev,
+                          includeVoidedSales: e.target.checked
+                        }))}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-600">
+                        Include Voided Sales
+                      </span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={seedOptions.includeDelayedBookings}
+                        onChange={(e) => setSeedOptions(prev => ({
+                          ...prev,
+                          includeDelayedBookings: e.target.checked
+                        }))}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-600">
+                        Include Delayed Bookings
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleSeed}
                   disabled={isSeeding}
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                 >
-                  <option value="sales">Sales Data</option>
-                  <option value="support">Support Tickets</option>
-                  <option value="both">Both Sales & Support</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Number of Records
-                </label>
-                <input
-                  type="number"
-                  value={seedCount}
-                  onChange={(e) => setSeedCount(parseInt(e.target.value))}
-                  min="1"
-                  max="500"
-                  className="w-full border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500"
-                  disabled={isSeeding}
-                />
-              </div>
-                </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Options
-              </label>
-              
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="seasonalTrends"
-                    checked={seedOptions.includeSeasonalTrends}
-                    onChange={(e) => setSeedOptions({...seedOptions, includeSeasonalTrends: e.target.checked})}
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                    disabled={isSeeding}
-                  />
-                  <label htmlFor="seasonalTrends" className="ml-2 block text-sm text-gray-700">
-                    Include seasonal trends (busier in spring/summer)
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="voidedSales"
-                    checked={seedOptions.includeVoidedSales}
-                    onChange={(e) => setSeedOptions({...seedOptions, includeVoidedSales: e.target.checked})}
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                    disabled={isSeeding}
-                  />
-                  <label htmlFor="voidedSales" className="ml-2 block text-sm text-gray-700">
-                    Include voided/lost sales (with notes about costs)
-                  </label>
-                </div>
-                
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="delayedBookings"
-                    checked={seedOptions.includeDelayedBookings}
-                    onChange={(e) => setSeedOptions({...seedOptions, includeDelayedBookings: e.target.checked})}
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                    disabled={isSeeding}
-                  />
-                  <label htmlFor="delayedBookings" className="ml-2 block text-sm text-gray-700">
-                    Include delayed bookings (1 week to 3 months sales cycle)
-                  </label>
-                </div>
+                  {isSeeding ? 'Seeding...' : 'Generate Seed Data'}
+                </button>
               </div>
             </div>
-            
-            <button
-              onClick={handleSeed}
-              disabled={isSeeding}
-              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 disabled:bg-gray-400"
-            >
-              {isSeeding ? 'Seeding...' : 'Generate Seed Data'}
-            </button>
-            
-            {seedResult && (
-              <div className={`mt-4 p-3 rounded ${seedResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                {seedResult.message}
-              </div>
-            )}
           </div>
         )}
         

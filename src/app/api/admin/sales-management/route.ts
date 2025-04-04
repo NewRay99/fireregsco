@@ -12,11 +12,21 @@ export async function GET(req: NextRequest) {
     const saleId = url.searchParams.get('id');
     
     if (saleId) {
-      // Fetch a specific sale
+      // Fetch a specific sale with its tracking history
       const { data: sale, error: saleError } = await supabaseAdmin
         .from('sales')
-        .select('*')
+        .select(`
+          *,
+          sales_tracking (
+            id,
+            status,
+            notes,
+            created_at,
+            updated_by
+          )
+        `)
         .eq('id', saleId)
+        .order('sales_tracking.created_at', { ascending: false })
         .single();
       
       if (saleError) {
@@ -27,46 +37,56 @@ export async function GET(req: NextRequest) {
         }, { status: 500 });
       }
       
-      // Fetch tracking history for this sale
-      const { data: trackingHistory, error: trackingError } = await supabaseAdmin
-        .from('sales_tracking')
-        .select('*')
-        .eq('sale_id', saleId)
-        .order('created_at', { ascending: false });
-      
-      if (trackingError) {
-        console.error(`Error fetching tracking history for sale ${saleId}:`, trackingError);
-        return NextResponse.json({ 
-          success: false, 
-          error: trackingError.message 
-        }, { status: 500 });
-      }
-      
       return NextResponse.json({
         success: true,
         sale,
-        trackingHistory
-      });
-    } else {
-      // Fetch all sales
-      const { data: sales, error: salesError } = await supabaseAdmin
-        .from('sales')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (salesError) {
-        console.error("Error fetching all sales:", salesError);
-        return NextResponse.json({ 
-          success: false, 
-          error: salesError.message 
-        }, { status: 500 });
-      }
-      
-      return NextResponse.json({
-        success: true,
-        sales
+        trackingHistory: sale.sales_tracking || []
       });
     }
+
+    // Fetch all sales with their tracking history
+    console.log("API: Fetching all sales with tracking history");
+    const { data: sales, error: salesError } = await supabaseAdmin
+      .from('sales')
+      .select(`
+        *,
+        sales_tracking (
+          id,
+          status,
+          notes,
+          created_at,
+          updated_by
+        )
+      `)
+      .order('created_at', { ascending: false });
+    
+    console.log("API: Sales data:", sales);
+    
+    if (salesError) {
+      console.error("Error fetching all sales:", salesError);
+      return NextResponse.json({ 
+        success: false, 
+        error: salesError.message 
+      }, { status: 500 });
+    }
+    
+    // Format the response to include tracking history
+    const formattedSales = sales?.map(sale => ({
+      ...sale,
+      trackingHistory: sale.sales_tracking || []
+    })) || [];
+
+    console.log("API: Formatted sales with tracking history:", 
+      formattedSales.map(s => ({
+        email: s.email,
+        trackingHistoryCount: s.trackingHistory.length
+      }))
+    );
+
+    return NextResponse.json({
+      success: true,
+      sales: formattedSales
+    });
   } catch (error) {
     console.error("Error in sales-management API:", error);
     return NextResponse.json(

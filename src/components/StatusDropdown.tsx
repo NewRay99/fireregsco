@@ -14,38 +14,23 @@ import { cn } from "@/lib/utils";
 
 interface StatusDropdownProps {
   currentStatus: string;
-  onChange: (newStatus: string) => void;
+  onStatusChange: (newStatus: string) => void;
   disabled?: boolean;
+  statuses?: string[];
 }
 
 export default function StatusDropdown({ 
   currentStatus, 
-  onChange, 
-  disabled = false 
+  onStatusChange, 
+  disabled = false,
+  statuses = []
 }: StatusDropdownProps) {
   const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    async function loadNextStatuses() {
-      try {
-        setIsLoading(true);
-        const nextStatuses = await getNextStatuses(currentStatus);
-        const allStatuses = Array.isArray(nextStatuses) 
-          ? [...nextStatuses, "contacted", "void"].filter((v, i, a) => a.indexOf(v) === i)
-          : ["contacted", "void"];
-        
-        setAvailableStatuses(allStatuses);
-      } catch (error) {
-        console.error("Error loading next statuses:", error);
-        setAvailableStatuses(["pending", "contacted", "interested", "not available", "void"]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadNextStatuses();
-  }, [currentStatus]);
+    setAvailableStatuses(statuses.length > 0 ? statuses : ["pending", "contacted", "interested", "not available", "void"]);
+  }, [statuses]);
 
   // Status color mapping
   const getStatusColor = (status: string) => {
@@ -77,7 +62,7 @@ export default function StatusDropdown({
   return (
     <Select
       value={currentStatus}
-      onValueChange={onChange}
+      onValueChange={onStatusChange}
       disabled={disabled}
     >
       <SelectTrigger className={cn(

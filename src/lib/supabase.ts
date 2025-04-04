@@ -69,6 +69,19 @@ export const formatSaleFromSupabase = (record: any) => {
     }
   }
 
+  // Format tracking history if it exists
+  // First try sales_tracking (from direct query), then trackingHistory (from API response)
+  const trackingHistory = (record.sales_tracking || record.trackingHistory || []).map((entry: any) => ({
+    status: entry.status,
+    timestamp: entry.created_at,
+    notes: entry.notes || ''
+  }));
+
+  console.log('Formatting tracking history:', {
+    original: record.sales_tracking || record.trackingHistory || [],
+    formatted: trackingHistory
+  });
+
   return {
     id: record.id,
     name: record.name,
@@ -81,7 +94,7 @@ export const formatSaleFromSupabase = (record: any) => {
     status: record.status,
     timestamp: record.created_at,
     updatedAt: record.updated_at,
-    trackingHistory: [] // Initialize with empty array, will be populated separately
+    trackingHistory
   };
 };
 

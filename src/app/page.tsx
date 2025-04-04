@@ -30,35 +30,41 @@ export default function Home() {
       
       {/* Hero Section */}
       <section className="bg-red-700 text-white pt-28 pb-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">Fire Safety Compliance Specialists</h1>
-            <p className="text-xl md:text-2xl mb-8">
-              Professional fire door inspections and safety assessments for HMOs, hotels, and commercial properties
-            </p>
-            
-            {/* Door Counter */}
-            <div className="max-w-xs mx-auto mb-8">
-              <DoorCounter />
-            </div>
-            
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link 
-                href="#contact" 
-                className="bg-white text-red-700 font-bold py-3 px-6 rounded-md hover:bg-gray-100 transition-colors"
-              >
-                Get a Free Quote
-              </Link>
-              <Link 
-                href="#services" 
-                className="border-2 border-white text-white font-bold py-3 px-6 rounded-md hover:bg-red-800 transition-colors"
-              >
-                Our Services
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+  <div className="container mx-auto px-4">
+    <div className="max-w-4xl mx-auto text-center">
+      <h1 className="text-4xl md:text-6xl font-bold mb-6">ARE YOUR PROPERTIES FIRE RATED?</h1>
+      <p className="text-xl md:text-2xl mb-8">
+        NON-COMPLIANCE COULD COST YOU £200,000 IN FINES
+      </p>
+      <p className="text-lg md:text-xl mb-8">
+        Professional fire door inspections and safety assessments for HMOs, hotels, and commercial properties
+      </p>
+     
+      {/* Door Counter 
+      <div className="max-w-xs mx-auto mb-8">
+        <DoorCounter />
+      </div>
+      */}
+
+      
+      <div className="flex flex-col sm:flex-row justify-center gap-4">
+        <Link
+          href="#contact"
+          className="bg-white text-red-700 font-bold py-3 px-6 rounded-md hover:bg-gray-100 transition-colors"
+        >
+          Book Your FREE Fire Safety Assessment
+        </Link>
+        <Link
+          href="#services"
+          className="border-2 border-white text-white font-bold py-3 px-6 rounded-md hover:bg-red-800 transition-colors"
+        >
+          Our Services
+        </Link>
+      </div>
+      <p className="text-lg italic mt-4">Protect your investment. Protect lives.</p>
+    </div>
+  </div>
+</section>
 
       {/* Certifications Section */}
       <section className="bg-white py-10">

@@ -17,7 +17,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Sample data
 const propertyTypes = ['Residential', 'Commercial', 'Industrial', 'Multi-family'];
-const statuses = ['pending', 'contacted', 'interested', 'qualified', 'converted', 'closed', 'not available'];
+const statuses = ['pending', 'contacted', 'interested', 'sent invoice', 'payment received', 'closed', 'not available'];
 const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah', 'Robert', 'Lisa', 'William', 'Emma'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis', 'Miller', 'Wilson', 'Moore', 'Taylor'];
 const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com', 'icloud.com'];
@@ -82,14 +82,14 @@ function getRandomNote(status: string) {
       'Scheduled in-person meeting',
       'Customer reviewing options'
     ],
-    qualified: [
+    sent_invoice: [
       'Confirmed budget',
       'Discussed timeline',
       'Verified property details',
       'Completed needs assessment',
       'Ready for proposal'
     ],
-    converted: [
+    payment_received: [
       'Proposal accepted',
       'Deposit received',
       'Contract signed',
